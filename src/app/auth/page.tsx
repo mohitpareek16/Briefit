@@ -11,79 +11,76 @@ function AuthContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const role = searchParams.get('role') || 'hustler'
-  const redirectTo = searchParams.get('redirectTo') || ''
   const error = searchParams.get('error')
   const [loading, setLoading] = useState(false)
-
   const isHustler = role === 'hustler'
 
   const handleGoogleAuth = async () => {
     setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOAuth({
+    await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback?role=${role}`,
         queryParams: { access_type: 'offline', prompt: 'consent' },
       },
     })
-    if (error) setLoading(false)
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary)' }}>
-            <Zap size={14} className="text-white" strokeWidth={2.5} />
+      <header style={{ borderBottom: '1px solid var(--border)', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Zap size={15} color="#fff" strokeWidth={2.5} />
           </div>
-          <span className="font-bold text-base" style={{ color: 'var(--text)' }}>Briefit</span>
+          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>Briefit</span>
         </div>
         <ThemeToggle />
       </header>
 
-      {/* Content */}
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
+      {/* Body */}
+      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="w-full max-w-sm"
+          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}
+          style={{ width: '100%', maxWidth: 360 }}
         >
           {/* Role pill */}
-          <div className="flex justify-center mb-8">
-            <span className="badge badge-purple text-xs font-semibold px-4 py-1.5">
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+            <span className="badge badge-purple" style={{ fontSize: 12, padding: '5px 14px' }}>
               {isHustler ? '⚡ Joining as a Hustler' : '🚀 Joining as an Entrepreneur'}
             </span>
           </div>
 
-          <h1 className="text-2xl font-bold text-center mb-2" style={{ color: 'var(--text)' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', textAlign: 'center', marginBottom: 8 }}>
             Welcome to Briefit
           </h1>
-          <p className="text-center text-sm mb-8" style={{ color: 'var(--text-muted)' }}>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 32, lineHeight: 1.6 }}>
             {isHustler
               ? 'Sign in to discover live briefs and get matched with founders.'
-              : 'Sign in to find the perfect freelancer for your next brief.'}
+              : 'Sign in to find the perfect freelancer for your brief.'}
           </p>
 
           {error && (
-            <div className="mb-6 p-3 rounded-xl text-sm text-center badge-red" style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.2)' }}>
+            <div className="badge-red" style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 20, textAlign: 'center', fontSize: 13, border: '1px solid rgba(220,38,38,0.25)', background: 'rgba(220,38,38,0.08)', color: 'var(--danger)' }}>
               Authentication failed. Please try again.
             </div>
           )}
 
-          {/* Google Sign In */}
+          {/* Google button */}
           <button
             onClick={handleGoogleAuth}
             disabled={loading}
-            className="btn btn-full btn-lg relative"
-            style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text)' }}
+            className="btn btn-full"
+            style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text)', padding: '12px 20px', fontSize: 15, borderRadius: 12 }}
           >
             {loading ? (
-              <div className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--primary)' }} />
+              <div style={{ width: 20, height: 20, border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
             ) : (
-              <svg viewBox="0 0 24 24" width="20" height="20">
+              <svg viewBox="0 0 24 24" width="20" height="20" style={{ flexShrink: 0 }}>
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -93,33 +90,29 @@ function AuthContent() {
             {loading ? 'Redirecting...' : 'Continue with Google'}
           </button>
 
-          <p className="text-center text-xs mt-6" style={{ color: 'var(--text-subtle)' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-subtle)', textAlign: 'center', marginTop: 20 }}>
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
 
-          {/* Switch role */}
-          <div className="mt-8 text-center">
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+          <div style={{ marginTop: 28, textAlign: 'center' }}>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
               Want to join as {isHustler ? 'an Entrepreneur' : 'a Hustler'} instead?{' '}
             </span>
             <button
               onClick={() => router.push(`/auth?role=${isHustler ? 'entrepreneur' : 'hustler'}`)}
-              className="text-sm font-semibold"
-              style={{ color: 'var(--primary)' }}
+              style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer' }}
             >
               Switch
             </button>
           </div>
         </motion.div>
       </main>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
 
 export default function AuthPage() {
-  return (
-    <Suspense>
-      <AuthContent />
-    </Suspense>
-  )
+  return <Suspense><AuthContent /></Suspense>
 }

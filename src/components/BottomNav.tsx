@@ -12,61 +12,52 @@ interface BottomNavProps {
 export function BottomNav({ role }: BottomNavProps) {
   const pathname = usePathname()
 
-  const hustlerNav = [
-    { href: '/hustler/dashboard', icon: Home, label: 'Home' },
-    { href: '/hustler/briefs', icon: FileText, label: 'Briefs' },
-    { href: '/hustler/notifications', icon: Bell, label: 'Alerts' },
-    { href: '/hustler/profile', icon: User, label: 'Profile' },
-  ]
-
-  const entrepreneurNav = [
-    { href: '/entrepreneur/dashboard', icon: Home, label: 'Home' },
-    { href: '/entrepreneur/post-brief', icon: Plus, label: 'Post' },
-    { href: '/entrepreneur/briefs', icon: FileText, label: 'Briefs' },
-    { href: '/entrepreneur/profile', icon: User, label: 'Profile' },
-  ]
-
-  const items = role === 'hustler' ? hustlerNav : entrepreneurNav
+  const nav = role === 'hustler'
+    ? [
+        { href: '/hustler/dashboard',      icon: Home,     label: 'Home' },
+        { href: '/hustler/briefs',          icon: FileText, label: 'Briefs' },
+        { href: '/hustler/notifications',   icon: Bell,     label: 'Alerts' },
+        { href: '/hustler/profile',         icon: User,     label: 'Profile' },
+      ]
+    : [
+        { href: '/entrepreneur/dashboard',  icon: Home,     label: 'Home' },
+        { href: '/entrepreneur/post-brief', icon: Plus,     label: 'Post' },
+        { href: '/entrepreneur/briefs',     icon: FileText, label: 'Briefs' },
+        { href: '/entrepreneur/profile',    icon: User,     label: 'Profile' },
+      ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t"
-      style={{
-        background: 'var(--bg)',
-        borderColor: 'var(--border)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-      }}
-    >
-      <div className="flex items-center justify-around px-2 h-16">
-        {items.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-          const Icon = item.icon
-          return (
-            <Link key={item.href} href={item.href} className="flex-1">
-              <div className="flex flex-col items-center justify-center gap-1 py-2 relative">
-                {isActive && (
-                  <motion.div
-                    layoutId="bottom-nav-indicator"
-                    className="absolute inset-0 rounded-xl"
-                    style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  />
-                )}
-                <Icon
-                  size={20}
-                  style={{ color: isActive ? 'var(--primary)' : 'var(--text-subtle)' }}
-                  strokeWidth={isActive ? 2.5 : 2}
-                />
-                <span
-                  className="text-[10px] font-medium"
-                  style={{ color: isActive ? 'var(--primary)' : 'var(--text-subtle)' }}
-                >
-                  {item.label}
-                </span>
-              </div>
-            </Link>
-          )
-        })}
-      </div>
+    <nav style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50,
+      height: 60,
+      background: 'var(--bg)',
+      borderTop: '1px solid var(--border)',
+      display: 'flex', alignItems: 'stretch',
+      paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+    }}>
+      {nav.map((item) => {
+        const active = pathname === item.href || pathname.startsWith(item.href + '/')
+        const Icon = item.icon
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            style={{ flex: 1, textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, position: 'relative' }}
+          >
+            {active && (
+              <motion.div
+                layoutId="tab-bg"
+                style={{ position: 'absolute', inset: '4px 6px', borderRadius: 10, background: 'var(--primary-soft)' }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+            <Icon size={20} color={active ? 'var(--primary)' : 'var(--text-subtle)'} strokeWidth={active ? 2.5 : 2} style={{ position: 'relative' }} />
+            <span style={{ fontSize: 10, fontWeight: active ? 600 : 400, color: active ? 'var(--primary)' : 'var(--text-subtle)', position: 'relative' }}>
+              {item.label}
+            </span>
+          </Link>
+        )
+      })}
     </nav>
   )
 }
