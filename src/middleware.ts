@@ -26,6 +26,10 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { pathname } = request.nextUrl
 
+  // Allow demo mode through
+  const demoMode = request.cookies.get('briefit_demo')?.value
+  if (demoMode) return supabaseResponse
+
   const protectedPrefixes = ['/hustler', '/entrepreneur', '/onboarding']
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p))
 
