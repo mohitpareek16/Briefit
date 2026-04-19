@@ -1,228 +1,176 @@
-"use client";
+'use client'
 
-import { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { Star, MapPin, Plus, Users, TrendingUp, Clock } from "lucide-react";
-import { NavBar } from "@/components/NavBar";
+import { useState, useEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
+import Link from 'next/link'
+import { Star, MapPin, Plus, Users, TrendingUp, Clock, Zap } from 'lucide-react'
+import { NavBar } from '@/components/NavBar'
+import { BottomNav } from '@/components/BottomNav'
+import { createClient } from '@/lib/supabase/client'
 
-const SKILL_FILTERS = ["All", "Design", "Development", "Marketing", "Content", "Video", "Social Media"];
+const SKILL_FILTERS = ['All', 'Design', 'Development', 'Marketing', 'Content Writing', 'Video Editing', 'Social Media']
 
-const MOCK_FREELANCERS = [
-  { id: 1, name: "Arjun Mehta", skill: "Development", location: "Bangalore", available: true, availableIn: null, rating: 4.9, completed: 34, initial: "A" },
-  { id: 2, name: "Priya Singh", skill: "Design", location: "Mumbai", available: true, availableIn: null, rating: 4.8, completed: 28, initial: "P" },
-  { id: 3, name: "Rohit Kumar", skill: "Marketing", location: "Delhi", available: false, availableIn: "2h", rating: 4.7, completed: 22, initial: "R" },
-  { id: 4, name: "Sneha Patel", skill: "Content", location: "Pune", available: true, availableIn: null, rating: 5.0, completed: 41, initial: "S" },
-  { id: 5, name: "Vikram Nair", skill: "Video", location: "Chennai", available: false, availableIn: "1h", rating: 4.6, completed: 19, initial: "V" },
-  { id: 6, name: "Ananya Rao", skill: "Social Media", location: "Hyderabad", available: true, availableIn: null, rating: 4.8, completed: 31, initial: "A" },
-  { id: 7, name: "Karan Gupta", skill: "Development", location: "Remote", available: true, availableIn: null, rating: 4.9, completed: 56, initial: "K" },
-  { id: 8, name: "Meera Joshi", skill: "Design", location: "Jaipur", available: false, availableIn: "3h", rating: 4.7, completed: 25, initial: "M" },
-  { id: 9, name: "Aditya Shah", skill: "Marketing", location: "Ahmedabad", available: true, availableIn: null, rating: 4.8, completed: 38, initial: "A" },
-  { id: 10, name: "Tanvi Desai", skill: "Content", location: "Remote", available: true, availableIn: null, rating: 4.9, completed: 47, initial: "T" },
-  { id: 11, name: "Rahul Verma", skill: "Video", location: "Kolkata", available: false, availableIn: "4h", rating: 4.5, completed: 16, initial: "R" },
-  { id: 12, name: "Ishaan Malhotra", skill: "Social Media", location: "Gurgaon", available: true, availableIn: null, rating: 4.8, completed: 29, initial: "I" },
-  { id: 13, name: "Divya Sharma", skill: "Design", location: "Noida", available: true, availableIn: null, rating: 4.6, completed: 23, initial: "D" },
-  { id: 14, name: "Nikhil Reddy", skill: "Development", location: "Hyderabad", available: false, availableIn: "2h", rating: 4.9, completed: 61, initial: "N" },
-];
+const MOCK_HUSTLERS = [
+  { id: '1', name: 'Arjun Mehta', skill: 'Development', location: 'Bangalore', is_active: true, rating: 4.9, completed_briefs: 34 },
+  { id: '2', name: 'Priya Singh', skill: 'Design', location: 'Mumbai', is_active: true, rating: 4.8, completed_briefs: 28 },
+  { id: '3', name: 'Rohit Kumar', skill: 'Marketing', location: 'Delhi', is_active: false, rating: 4.7, completed_briefs: 22 },
+  { id: '4', name: 'Sneha Patel', skill: 'Content Writing', location: 'Pune', is_active: true, rating: 5.0, completed_briefs: 41 },
+  { id: '5', name: 'Vikram Nair', skill: 'Video Editing', location: 'Chennai', is_active: false, rating: 4.6, completed_briefs: 19 },
+  { id: '6', name: 'Ananya Rao', skill: 'Social Media', location: 'Hyderabad', is_active: true, rating: 4.8, completed_briefs: 31 },
+  { id: '7', name: 'Karan Gupta', skill: 'Development', location: 'Remote', is_active: true, rating: 4.9, completed_briefs: 56 },
+  { id: '8', name: 'Meera Joshi', skill: 'Design', location: 'Jaipur', is_active: false, rating: 4.7, completed_briefs: 25 },
+  { id: '9', name: 'Aditya Shah', skill: 'Marketing', location: 'Ahmedabad', is_active: true, rating: 4.8, completed_briefs: 38 },
+  { id: '10', name: 'Tanvi Desai', skill: 'Content Writing', location: 'Remote', is_active: true, rating: 4.9, completed_briefs: 47 },
+  { id: '11', name: 'Rahul Verma', skill: 'Video Editing', location: 'Kolkata', is_active: false, rating: 4.5, completed_briefs: 16 },
+  { id: '12', name: 'Ishaan Malhotra', skill: 'Social Media', location: 'Gurgaon', is_active: true, rating: 4.8, completed_briefs: 29 },
+]
 
-const AVATAR_COLORS = [
-  "from-purple-600 to-purple-400",
-  "from-cyan-600 to-cyan-400",
-  "from-pink-600 to-pink-400",
-  "from-green-600 to-green-400",
-  "from-orange-600 to-orange-400",
-  "from-blue-600 to-blue-400",
-];
+const AVATAR_BG = ['#7c3aed', '#0891b2', '#db2777', '#16a34a', '#ea580c', '#2563eb', '#b45309']
 
-function AnimatedCounter({ target, duration = 2000 }: { target: number; duration?: number }) {
-  const [count, setCount] = useState(0);
-  const startTime = useRef<number | null>(null);
-  const animFrameRef = useRef<number | null>(null);
-
+function Counter({ target }: { target: number }) {
+  const [count, setCount] = useState(0)
+  const ref = useRef<number | null>(null)
   useEffect(() => {
-    const animate = (timestamp: number) => {
-      if (!startTime.current) startTime.current = timestamp;
-      const progress = Math.min((timestamp - startTime.current) / duration, 1);
-      setCount(Math.floor(progress * target));
-      if (progress < 1) {
-        animFrameRef.current = requestAnimationFrame(animate);
-      }
-    };
-    animFrameRef.current = requestAnimationFrame(animate);
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, [target, duration]);
-
-  return <span>{count.toLocaleString("en-IN")}</span>;
+    const start = Date.now()
+    const dur = 1500
+    const tick = () => {
+      const p = Math.min((Date.now() - start) / dur, 1)
+      setCount(Math.floor(p * target))
+      if (p < 1) ref.current = requestAnimationFrame(tick)
+    }
+    ref.current = requestAnimationFrame(tick)
+    return () => { if (ref.current) cancelAnimationFrame(ref.current) }
+  }, [target])
+  return <>{count.toLocaleString('en-IN')}</>
 }
 
 export default function EntrepreneurDashboard() {
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [filter, setFilter] = useState('All')
+  const [profile, setProfile] = useState<any>(null)
 
-  const filtered = activeFilter === "All"
-    ? MOCK_FREELANCERS
-    : MOCK_FREELANCERS.filter((f) => {
-        const map: Record<string, string> = {
-          Content: "Content",
-          Video: "Video",
-        };
-        const skill = map[activeFilter] || activeFilter;
-        return f.skill === skill || f.skill.toLowerCase().includes(activeFilter.toLowerCase());
-      });
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return
+      const { data: p } = await supabase.from('profiles').select('*').eq('id', data.user.id).single()
+      if (p) setProfile(p)
+    })
+  }, [])
+
+  const filtered = filter === 'All'
+    ? MOCK_HUSTLERS
+    : MOCK_HUSTLERS.filter((h) => h.skill.toLowerCase().includes(filter.toLowerCase()))
+
+  const liveCount = MOCK_HUSTLERS.filter((h) => h.is_active).length
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f]">
-      <NavBar showBack backHref="/" backLabel="Home" />
+    <div className="min-h-screen pb-safe" style={{ background: 'var(--bg)' }}>
+      <NavBar showLogout />
 
-      <main className="pt-20 pb-24 px-4 max-w-7xl mx-auto">
+      <main className="pt-16 pb-4 px-4 max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="py-5">
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>
+            Hey {profile?.name?.split(' ')[0] || 'Founder'} 👋
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>Find the perfect hustler for your next brief</p>
+        </div>
+
         {/* Stats bar */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
-        >
-          <div className="glass border border-white/10 rounded-xl px-5 py-4 flex items-center gap-3 bg-white/5">
-            <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
-              <Users className="w-5 h-5 text-green-400" />
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="card p-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="pulse-dot" />
+              <span className="font-bold text-lg" style={{ color: 'var(--text)' }}>
+                <Counter target={liveCount} />
+              </span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="pulse-dot scale-75" />
-                <span className="text-lg font-bold text-white">
-                  <AnimatedCounter target={247} />
-                </span>
-              </div>
-              <p className="text-xs text-slate-400">Hustlers Live Now</p>
-            </div>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Live Now</p>
           </div>
-
-          <div className="glass border border-white/10 rounded-xl px-5 py-4 flex items-center gap-3 bg-white/5">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-purple-400" />
+          <div className="card p-4">
+            <div className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>
+              <Counter target={1842} />
             </div>
-            <div>
-              <div className="text-lg font-bold text-white">
-                <AnimatedCounter target={1842} />
-              </div>
-              <p className="text-xs text-slate-400">Total Hustlers</p>
-            </div>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total Hustlers</p>
           </div>
-
-          <div className="glass border border-white/10 rounded-xl px-5 py-4 flex items-center gap-3 bg-white/5">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-cyan-400" />
-            </div>
-            <div>
-              <div className="text-lg font-bold text-white">~2 min</div>
-              <p className="text-xs text-slate-400">Avg. Match Time</p>
-            </div>
+          <div className="card p-4">
+            <div className="font-bold text-lg mb-1" style={{ color: 'var(--text)' }}>~2 min</div>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Avg. Match</p>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Filter tabs */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide"
-        >
-          {SKILL_FILTERS.map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setActiveFilter(filter)}
-              className={`flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                activeFilter === filter
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20"
-                  : "bg-white/10 text-slate-400 hover:bg-white/20 hover:text-white"
-              }`}
-            >
-              {filter}
+        {/* Skill filter */}
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
+          {SKILL_FILTERS.map((f) => (
+            <button key={f} onClick={() => setFilter(f)}
+              className="flex-shrink-0 btn btn-sm"
+              style={{
+                background: filter === f ? 'var(--primary)' : 'var(--bg-muted)',
+                color: filter === f ? 'white' : 'var(--text-muted)',
+                border: `1px solid ${filter === f ? 'var(--primary)' : 'var(--border)'}`,
+              }}>
+              {f}
             </button>
           ))}
-        </motion.div>
+        </div>
 
-        {/* Freelancer grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map((freelancer, index) => (
+        {/* Hustler grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {filtered.map((h, i) => (
             <motion.div
-              key={freelancer.id}
-              initial={{ opacity: 0, y: 20 }}
+              key={h.id}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: index * 0.05 }}
-              whileHover={{ y: -4, scale: 1.02 }}
-              className="glass border border-white/10 rounded-xl p-5 cursor-pointer
-                hover:border-purple-500/30 hover:bg-white/5 transition-all duration-200 bg-white/5"
+              transition={{ delay: i * 0.04 }}
+              className="card p-4 cursor-pointer card-interactive"
             >
-              {/* Avatar */}
-              <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${AVATAR_COLORS[index % AVATAR_COLORS.length]}
-                  flex items-center justify-center text-white font-bold text-lg`}>
-                  {freelancer.initial}
+              <div className="flex items-start justify-between mb-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-sm"
+                  style={{ background: AVATAR_BG[i % AVATAR_BG.length] }}>
+                  {h.name[0]}
                 </div>
-
-                {/* Availability badge */}
-                {freelancer.available ? (
-                  <span className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full
-                    bg-green-500/20 text-green-400 border border-green-500/20">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                    Available Now
+                {h.is_active ? (
+                  <span className="badge badge-green text-xs py-0.5 gap-1">
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+                    Live
                   </span>
                 ) : (
-                  <span className="text-xs px-2.5 py-1 rounded-full
-                    bg-orange-500/20 text-orange-400 border border-orange-500/20">
-                    Available in {freelancer.availableIn}
-                  </span>
+                  <span className="badge badge-gray text-xs py-0.5">Away</span>
                 )}
               </div>
-
-              <h3 className="font-semibold text-white text-sm mb-1">{freelancer.name}</h3>
-
-              <div className="flex items-center gap-1.5 text-xs text-slate-400 mb-3">
-                <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 text-xs">
-                  {freelancer.skill}
-                </span>
-                <span className="flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  {freelancer.location}
-                </span>
+              <p className="font-semibold text-sm mb-1" style={{ color: 'var(--text)' }}>{h.name}</p>
+              <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>{h.skill}</p>
+              <div className="flex items-center gap-1 text-xs mb-2" style={{ color: 'var(--text-subtle)' }}>
+                <MapPin size={10} />{h.location}
               </div>
-
-              {/* Rating & stats */}
               <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1 text-yellow-400">
-                  {[...Array(5)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-3 h-3 ${i < Math.floor(freelancer.rating) ? "fill-yellow-400" : "fill-transparent stroke-yellow-400"}`}
-                    />
-                  ))}
-                  <span className="text-slate-400 ml-1">{freelancer.rating}</span>
+                <div className="flex items-center gap-0.5" style={{ color: '#f59e0b' }}>
+                  <Star size={11} className="fill-current" />
+                  <span style={{ color: 'var(--text-muted)' }}>{h.rating}</span>
                 </div>
-                <span className="text-slate-500">{freelancer.completed} briefs</span>
+                <span style={{ color: 'var(--text-subtle)' }}>{h.completed_briefs} done</span>
               </div>
             </motion.div>
           ))}
         </div>
       </main>
 
-      {/* Floating Post Brief button */}
+      {/* Post Brief FAB */}
       <Link href="/entrepreneur/post-brief">
         <motion.div
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ delay: 0.4, type: 'spring', stiffness: 260 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="fixed bottom-8 right-8 z-50 flex items-center gap-2 px-6 py-4 rounded-2xl
-            bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-bold
-            shadow-2xl shadow-purple-500/30 cursor-pointer neon-glow"
+          className="fixed bottom-20 right-5 z-40 flex items-center gap-2 px-5 py-3.5 rounded-2xl font-bold text-sm shadow-xl cursor-pointer"
+          style={{ background: 'var(--primary)', color: 'white', boxShadow: '0 8px 30px color-mix(in srgb, var(--primary) 40%, transparent)' }}
         >
-          <Plus className="w-5 h-5" />
-          Post a Brief
+          <Plus size={18} /> Post a Brief
         </motion.div>
       </Link>
+
+      <BottomNav role="entrepreneur" />
     </div>
-  );
+  )
 }
