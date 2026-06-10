@@ -17,8 +17,8 @@ export default function HustlerOnboarding() {
 
   const [form, setForm] = useState({
     name: '',
-    skill: '',
     mobile: '',
+    skill: '',
     location: '',
     heard_from: '',
   })
@@ -35,8 +35,8 @@ export default function HustlerOnboarding() {
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
   const canNext = () => {
-    if (step === 1) return form.name.trim() && form.skill
-    if (step === 2) return form.mobile.trim() && form.location.trim()
+    if (step === 1) return form.name.trim() && form.mobile.trim().length >= 10
+    if (step === 2) return form.skill && form.location.trim()
     if (step === 3) return !!form.heard_from
     return false
   }
@@ -76,9 +76,9 @@ export default function HustlerOnboarding() {
   }
 
   const steps = [
-    { n: 1, label: 'About You' },
-    { n: 2, label: 'Contact' },
-    { n: 3, label: 'Final Step' },
+    { n: 1, label: 'Contact' },
+    { n: 2, label: 'Skills' },
+    { n: 3, label: 'Final' },
   ]
 
   return (
@@ -122,8 +122,8 @@ export default function HustlerOnboarding() {
           <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}>
             {step === 1 && (
               <>
-                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Your Profile</h2>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Tell founders who you are</p>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Let's get you set up</h2>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Your phone lets founders reach you via WhatsApp & call</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Full Name</label>
@@ -139,25 +139,11 @@ export default function HustlerOnboarding() {
                     </div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Primary Skill</label>
-                    <select className="input" value={form.skill} onChange={(e) => set('skill', e.target.value)}>
-                      <option value="">Select your skill</option>
-                      {SKILLS.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {step === 2 && (
-              <>
-                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Contact Details</h2>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Shared only when you accept a match</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Mobile Number</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
+                      WhatsApp / Mobile Number
+                    </label>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <div className="input" style={{ width: 60, textAlign: 'center', flexShrink: 0, padding: '9px 8px' }}>+91</div>
+                      <div className="input" style={{ width: 60, textAlign: 'center', flexShrink: 0, padding: '9px 8px', color: 'var(--text-muted)' }}>+91</div>
                       <div style={{ position: 'relative', flex: 1 }}>
                         <Phone size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
                         <input
@@ -171,6 +157,23 @@ export default function HustlerOnboarding() {
                         />
                       </div>
                     </div>
+                    <p style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 5 }}>Shared with founders only when you accept a match</p>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Your Skills & Location</h2>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>We'll match you with founders looking for your expertise</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Primary Skill</label>
+                    <select className="input" value={form.skill} onChange={(e) => set('skill', e.target.value)}>
+                      <option value="">Select your skill</option>
+                      {SKILLS.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Location</label>
@@ -201,13 +204,8 @@ export default function HustlerOnboarding() {
                         key={h}
                         onClick={() => set('heard_from', h)}
                         style={{
-                          padding: '10px 12px',
-                          borderRadius: 10,
-                          fontSize: 13,
-                          fontWeight: 500,
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
+                          padding: '10px 12px', borderRadius: 10, fontSize: 13,
+                          fontWeight: 500, textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s',
                           background: form.heard_from === h ? 'var(--primary-soft)' : 'var(--bg-subtle)',
                           border: `1px solid ${form.heard_from === h ? 'var(--primary)' : 'var(--border)'}`,
                           color: form.heard_from === h ? 'var(--primary)' : 'var(--text-muted)',

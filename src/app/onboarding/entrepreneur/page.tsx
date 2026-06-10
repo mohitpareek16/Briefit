@@ -17,8 +17,8 @@ export default function EntrepreneurOnboarding() {
 
   const [form, setForm] = useState({
     name: '',
-    startup_name: '',
     mobile: '',
+    startup_name: '',
     location: '',
     heard_from: '',
   })
@@ -35,8 +35,8 @@ export default function EntrepreneurOnboarding() {
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
   const canNext = () => {
-    if (step === 1) return form.name.trim() && form.startup_name.trim()
-    if (step === 2) return form.mobile.trim() && form.location.trim()
+    if (step === 1) return form.name.trim() && form.mobile.trim().length >= 10
+    if (step === 2) return form.startup_name.trim() && form.location.trim()
     if (step === 3) return !!form.heard_from
     return false
   }
@@ -75,9 +75,9 @@ export default function EntrepreneurOnboarding() {
   }
 
   const steps = [
-    { n: 1, label: 'About You' },
-    { n: 2, label: 'Contact' },
-    { n: 3, label: 'Final Step' },
+    { n: 1, label: 'Contact' },
+    { n: 2, label: 'Startup' },
+    { n: 3, label: 'Final' },
   ]
 
   return (
@@ -121,8 +121,8 @@ export default function EntrepreneurOnboarding() {
           <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}>
             {step === 1 && (
               <>
-                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Your Profile</h2>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Tell hustlers about you and your startup</p>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Let's get you set up</h2>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Hustlers will reach you via WhatsApp & call once matched</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Your Name</label>
@@ -138,31 +138,11 @@ export default function EntrepreneurOnboarding() {
                     </div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Startup Name</label>
-                    <div style={{ position: 'relative' }}>
-                      <Briefcase size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
-                      <input
-                        className="input"
-                        style={{ paddingLeft: 36 }}
-                        placeholder="Your startup's name"
-                        value={form.startup_name}
-                        onChange={(e) => set('startup_name', e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {step === 2 && (
-              <>
-                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Contact Details</h2>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Used for match coordination</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Mobile Number</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
+                      WhatsApp / Mobile Number
+                    </label>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <div className="input" style={{ width: 60, textAlign: 'center', flexShrink: 0, padding: '9px 8px' }}>+91</div>
+                      <div className="input" style={{ width: 60, textAlign: 'center', flexShrink: 0, padding: '9px 8px', color: 'var(--text-muted)' }}>+91</div>
                       <div style={{ position: 'relative', flex: 1 }}>
                         <Phone size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
                         <input
@@ -175,6 +155,29 @@ export default function EntrepreneurOnboarding() {
                           maxLength={10}
                         />
                       </div>
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 5 }}>Used for coordination after a match is accepted</p>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>About Your Startup</h2>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Tell hustlers who they'll be working with</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Startup Name</label>
+                    <div style={{ position: 'relative' }}>
+                      <Briefcase size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
+                      <input
+                        className="input"
+                        style={{ paddingLeft: 36 }}
+                        placeholder="Your startup's name"
+                        value={form.startup_name}
+                        onChange={(e) => set('startup_name', e.target.value)}
+                      />
                     </div>
                   </div>
                   <div>
@@ -206,13 +209,8 @@ export default function EntrepreneurOnboarding() {
                         key={h}
                         onClick={() => set('heard_from', h)}
                         style={{
-                          padding: '10px 12px',
-                          borderRadius: 10,
-                          fontSize: 13,
-                          fontWeight: 500,
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
+                          padding: '10px 12px', borderRadius: 10, fontSize: 13,
+                          fontWeight: 500, textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s',
                           background: form.heard_from === h ? 'var(--primary-soft)' : 'var(--bg-subtle)',
                           border: `1px solid ${form.heard_from === h ? 'var(--primary)' : 'var(--border)'}`,
                           color: form.heard_from === h ? 'var(--primary)' : 'var(--text-muted)',
