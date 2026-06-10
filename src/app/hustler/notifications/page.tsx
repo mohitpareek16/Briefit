@@ -16,21 +16,34 @@ function timeAgo(iso: string) {
   return `${Math.floor(diff / 1440)}d ago`
 }
 
+const RATING_OPTIONS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
+
 function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [hover, setHover] = useState(0)
   return (
-    <div style={{ display: 'flex', gap: 6 }}>
-      {[1,2,3,4,5].map((i) => (
-        <button key={i} type="button"
-          onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(0)}
-          onClick={() => onChange(i)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>
-          <Star size={26} color="#f59e0b" style={{ fill: i <= (hover || value) ? '#f59e0b' : 'none', transition: 'all 0.1s' }} />
+    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      {RATING_OPTIONS.map((r) => (
+        <button key={r} type="button" onClick={() => onChange(r)}
+          style={{
+            padding: '5px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            background: value === r ? '#f59e0b' : 'var(--bg-muted)',
+            color: value === r ? '#fff' : 'var(--text-muted)',
+            border: `1.5px solid ${value === r ? '#f59e0b' : 'var(--border)'}`,
+            transition: 'all 0.12s',
+          }}>
+          {r === Math.floor(r) ? `${r}.0` : r} ⭐
         </button>
       ))}
     </div>
   )
 }
+
+const ENTREPRENEUR_SUGGESTIONS = [
+  'Clear brief, paid on time — great founder!',
+  'Very responsive and gave useful feedback.',
+  'Professional and respectful to work with.',
+  'Good experience overall, would work again.',
+  'Brief could have been clearer but fair.',
+]
 
 export default function HustlerNotifications() {
   const router = useRouter()
@@ -54,6 +67,7 @@ export default function HustlerNotifications() {
 
   // Review request sent
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set())
+  const [entrepreneurData, setEntrepreneurData] = useState<Record<string, any>>({})
 
   useEffect(() => {
     const supabase = createClient()
@@ -94,6 +108,21 @@ export default function HustlerNotifications() {
           const map: Record<string, string> = {}
           given.forEach((r: any) => { map[r.match_id] = r.id })
           setGivenReviews(map)
+        }
+
+        // For accepted matches, fetch entrepreneur profiles
+        const acceptedMatches = myMatches.filter((m: any) => m.status === 'accepted')
+        if (acceptedMatches.length > 0) {
+          const eIds = acceptedMatches.map((m: any) => (m.briefs as any)?.entrepreneur_id).filter(Boolean)
+          const { data: eProfiles } = await supabase
+            .from('entrepreneurs')
+            .select('id, startup_name, profiles(name, location)')
+            .in('id', eIds)
+          if (eProfiles) {
+            const eMap: Record<string, any> = {}
+            eProfiles.forEach((e: any) => { eMap[e.id] = e })
+            setEntrepreneurData(eMap)
+          }
         }
       }
 
@@ -153,7 +182,7 @@ export default function HustlerNotifications() {
   }
 
   const statusLabel = (status: string) => {
-    if (status === 'accepted') return { text: 'Accepted', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' }
+    if (status === 'accepted') return { text: 'Hired', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' }
     if (status === 'rejected') return { text: 'Declined', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' }
     return { text: 'Pending', color: 'var(--text-muted)', bg: 'var(--bg-muted)' }
   }
@@ -171,7 +200,7 @@ export default function HustlerNotifications() {
               className="card" style={{ padding: 24, maxWidth: 360, width: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Review {reviewModal.entrepreneurName}</h3>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Aura Points for {reviewModal.entrepreneurName}</h3>
                   <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>for "{reviewModal.briefTitle}"</p>
                 </div>
                 <button onClick={() => setReviewModal(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -184,6 +213,19 @@ export default function HustlerNotifications() {
               </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Comment (optional)</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                  {ENTREPRENEUR_SUGGESTIONS.map((s) => (
+                    <button key={s} type="button" onClick={() => setReviewComment(s)}
+                      style={{
+                        fontSize: 11, padding: '4px 10px', borderRadius: 8, cursor: 'pointer',
+                        background: reviewComment === s ? 'var(--primary-soft)' : 'var(--bg-muted)',
+                        color: reviewComment === s ? 'var(--primary)' : 'var(--text-muted)',
+                        border: `1px solid ${reviewComment === s ? 'var(--primary)' : 'var(--border)'}`,
+                      }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
                 <textarea className="input" rows={3} style={{ resize: 'none' }}
                   placeholder="How was working with this founder?"
                   value={reviewComment} onChange={(e) => setReviewComment(e.target.value)} />
@@ -192,7 +234,7 @@ export default function HustlerNotifications() {
                 className="btn btn-primary btn-full" style={{ gap: 6 }}>
                 {reviewSubmitting
                   ? <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                  : <><Star size={14} /> Submit Review</>
+                  : <><Star size={14} /> Submit Aura Points</>
                 }
               </button>
             </motion.div>
@@ -255,6 +297,20 @@ export default function HustlerNotifications() {
                   {/* Accepted match: show review received + actions */}
                   {isAccepted && (
                     <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                      {/* Entrepreneur mini-profile */}
+                      {isAccepted && entrepreneurId && entrepreneurData[entrepreneurId] && (
+                        <div style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--bg-muted)', marginBottom: 10, display: 'flex', gap: 10, alignItems: 'center' }}>
+                          <div style={{ width: 32, height: 32, borderRadius: 8, background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                            {((entrepreneurData[entrepreneurId]?.profiles as any)?.name || 'E')[0]}
+                          </div>
+                          <div>
+                            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{(entrepreneurData[entrepreneurId]?.profiles as any)?.name}</p>
+                            <p style={{ fontSize: 11, color: 'var(--primary)' }}>{entrepreneurData[entrepreneurId]?.startup_name}</p>
+                          </div>
+                          <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: 'rgba(34,197,94,0.1)', color: '#22c55e', marginLeft: 'auto' }}>🎉 Hired</span>
+                        </div>
+                      )}
+
                       {/* Review I received */}
                       {receivedReview && (
                         <div style={{ padding: 10, borderRadius: 8, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', marginBottom: 10 }}>
@@ -290,7 +346,7 @@ export default function HustlerNotifications() {
                               borderColor: hasRequested ? 'var(--primary)' : undefined,
                             }}>
                             <MessageCircle size={12} />
-                            {hasRequested ? 'Request Sent' : 'Request Review'}
+                            {hasRequested ? 'Request Sent' : 'Request Aura Points'}
                           </button>
                         )}
 
@@ -311,7 +367,7 @@ export default function HustlerNotifications() {
                             borderColor: hasGivenReview ? 'rgba(34,197,94,0.3)' : undefined,
                           }}>
                           <Star size={12} style={{ fill: hasGivenReview ? '#f59e0b' : 'none', color: hasGivenReview ? '#f59e0b' : undefined }} />
-                          {hasGivenReview ? 'Reviewed' : 'Review Founder'}
+                          {hasGivenReview ? 'Aura Points Given' : 'Leave Aura Points'}
                         </button>
                       </div>
                     </div>

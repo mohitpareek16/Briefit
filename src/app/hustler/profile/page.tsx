@@ -173,7 +173,7 @@ export default function HustlerProfile() {
           </div>
           <div className="card" style={{ padding: '12px 8px', textAlign: 'center' }}>
             <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)' }}>{reviews.length}</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Reviews</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Aura Points</div>
           </div>
         </div>
 
@@ -332,7 +332,7 @@ export default function HustlerProfile() {
         <div className="card" style={{ padding: 16, marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
             <Star size={16} color="#f59e0b" style={{ fill: '#f59e0b' }} />
-            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>Reviews from Founders</p>
+            <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>Aura Points from Founders</p>
             {reviews.length > 0 && (
               <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 'auto' }}>
                 {Number(avgRating).toFixed(1)} avg
@@ -341,8 +341,8 @@ export default function HustlerProfile() {
           </div>
           {reviews.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-subtle)' }}>
-              <p style={{ fontSize: 13 }}>No reviews yet</p>
-              <p style={{ fontSize: 11, marginTop: 4 }}>Complete projects to earn reviews</p>
+              <p style={{ fontSize: 13 }}>No Aura Points yet</p>
+              <p style={{ fontSize: 11, marginTop: 4 }}>Complete projects to earn Aura Points</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

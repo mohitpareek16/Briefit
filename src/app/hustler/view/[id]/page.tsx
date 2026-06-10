@@ -261,7 +261,7 @@ export default function HustlerViewPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
             <Award size={16} color="var(--primary)" />
             <p style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
-              Reviews {reviews.length > 0 && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({reviews.length})</span>}
+              Aura Points {reviews.length > 0 && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({reviews.length})</span>}
             </p>
           </div>
 
@@ -272,8 +272,8 @@ export default function HustlerViewPage() {
               border: '1px solid var(--border)',
             }}>
               <Star size={32} style={{ margin: '0 auto 10px', opacity: 0.2, display: 'block', color: 'var(--text-subtle)' }} />
-              <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>No reviews yet</p>
-              <p style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 4 }}>Reviews from entrepreneurs will appear here</p>
+              <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)' }}>No Aura Points yet</p>
+              <p style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 4 }}>Aura Points from entrepreneurs will appear here</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
