@@ -18,6 +18,7 @@ function AuthContent() {
   const handleGoogleAuth = async () => {
     setLoading(true)
     localStorage.setItem('briefit_role', role)
+    document.cookie = `briefit_role=${role}; path=/; max-age=3600; SameSite=Lax`
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
