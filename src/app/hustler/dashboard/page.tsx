@@ -8,6 +8,11 @@ import { NavBar } from '@/components/NavBar'
 import { BottomNav } from '@/components/BottomNav'
 import { createClient } from '@/lib/supabase/client'
 
+function parseSkills(raw: string): string[] {
+  if (!raw) return []
+  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [raw] } catch { return [raw] }
+}
+
 const SKILL_COLORS: Record<string, string> = {
   Development: '#7c3aed', Design: '#0891b2', 'Content Writing': '#16a34a',
   'Social Media': '#db2777', 'Video Editing': '#ea580c', Marketing: '#2563eb',
@@ -49,7 +54,13 @@ export default function HustlerDashboard() {
 
       if (p) setProfile(p)
       if (h) { setHustler(h); setIsActive(h.is_active) }
-      if (b) setBriefs(b)
+      if (b) {
+        const hustlerSkills = parseSkills(h?.skill || '')
+        const filtered = hustlerSkills.length > 0
+          ? b.filter((brief: any) => hustlerSkills.includes(brief.skill))
+          : b
+        setBriefs(filtered)
+      }
       setStats({
         applied: appliedMatches?.length ?? 0,
         matched: acceptedMatches?.length ?? 0,
@@ -147,6 +158,14 @@ export default function HustlerDashboard() {
           <FileText size={14} color="var(--text-muted)" />
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Live Briefs</span>
           <span className="live-dot" style={{ marginLeft: 4 }} />
+          {parseSkills(hustler?.skill || '').length > 0 && (
+            <span style={{
+              fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 99,
+              background: 'var(--primary-soft)', color: 'var(--primary)',
+            }}>
+              Matching your skills
+            </span>
+          )}
           <span style={{ fontSize: 12, color: 'var(--text-subtle)', marginLeft: 'auto' }}>{briefs.length} active</span>
         </div>
 

@@ -81,3 +81,28 @@ export const HEARD_FROM = [
   'Twitter / X',
   'Other',
 ] as const
+
+export interface Review {
+  id: string
+  match_id: string
+  reviewer_id: string
+  reviewee_id: string
+  reviewer_role: 'entrepreneur' | 'hustler'
+  rating: number
+  comment: string
+  created_at: string
+}
+
+export function parseSkills(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : [raw]
+  } catch {
+    return [raw]
+  }
+}
+
+export function serializeSkills(skills: string[]): string {
+  return JSON.stringify(skills)
+}

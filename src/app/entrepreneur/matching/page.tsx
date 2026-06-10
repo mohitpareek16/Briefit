@@ -8,6 +8,11 @@ import { Star, MapPin, Phone, MessageCircle, Check, ArrowLeft, Users } from 'luc
 import { NavBar } from '@/components/NavBar'
 import { createClient } from '@/lib/supabase/client'
 
+function parseSkills(raw: string): string[] {
+  if (!raw) return []
+  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [raw] } catch { return [raw] }
+}
+
 const STEPS = ['Scanning profiles...', 'Analyzing skills...', 'Ranking by availability...', 'Done!']
 const AVATAR_BG = ['#7c3aed', '#0891b2', '#db2777', '#16a34a', '#ea580c', '#2563eb', '#b45309']
 
@@ -65,15 +70,16 @@ function MatchingContent() {
       if (b) {
         setBrief(b)
         // Find hustlers with matching skill who are active
-        const { data: hustlers } = await supabase
+        const { data: hustlersData } = await supabase
           .from('hustlers')
           .select('id, skill, is_active, rating, completed_briefs, profiles(name, location, mobile)')
-          .eq('skill', b.skill)
           .order('is_active', { ascending: false })
           .order('rating', { ascending: false })
           .limit(10)
 
-        if (hustlers) setMatches(hustlers)
+        const allHustlers = hustlersData || []
+        const hustlers = allHustlers.filter((h: any) => parseSkills(h.skill).includes(b.skill))
+        setMatches(hustlers)
       }
     }
 

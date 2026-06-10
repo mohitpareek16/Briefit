@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Zap, User, MapPin, Phone, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Zap, User, MapPin, Phone, ChevronRight, ChevronLeft, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { SKILLS, HEARD_FROM } from '@/lib/types'
+import { SKILLS, HEARD_FROM, serializeSkills } from '@/lib/types'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
 export default function HustlerOnboarding() {
@@ -18,7 +18,7 @@ export default function HustlerOnboarding() {
   const [form, setForm] = useState({
     name: '',
     mobile: '',
-    skill: '',
+    skills: [] as string[],
     location: '',
     heard_from: '',
   })
@@ -34,9 +34,15 @@ export default function HustlerOnboarding() {
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
+  const toggleSkill = (skill: string) =>
+    setForm((f) => ({
+      ...f,
+      skills: f.skills.includes(skill) ? f.skills.filter((s) => s !== skill) : [...f.skills, skill],
+    }))
+
   const canNext = () => {
     if (step === 1) return form.name.trim() && form.mobile.trim().length >= 10
-    if (step === 2) return form.skill && form.location.trim()
+    if (step === 2) return form.skills.length > 0 && form.location.trim()
     if (step === 3) return !!form.heard_from
     return false
   }
@@ -63,7 +69,7 @@ export default function HustlerOnboarding() {
 
       const { error: he } = await supabase.from('hustlers').upsert({
         id: user.id,
-        skill: form.skill,
+        skill: serializeSkills(form.skills),
         is_active: false,
       }, { onConflict: 'id' })
       if (he) throw he
@@ -94,7 +100,7 @@ export default function HustlerOnboarding() {
       </header>
 
       <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
-        <div style={{ width: '100%', maxWidth: 360 }}>
+        <div style={{ width: '100%', maxWidth: 400 }}>
           {/* Progress steps */}
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 32 }}>
             {steps.map((s, i) => (
@@ -129,32 +135,16 @@ export default function HustlerOnboarding() {
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Full Name</label>
                     <div style={{ position: 'relative' }}>
                       <User size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
-                      <input
-                        className="input"
-                        style={{ paddingLeft: 36 }}
-                        placeholder="Your full name"
-                        value={form.name}
-                        onChange={(e) => set('name', e.target.value)}
-                      />
+                      <input className="input" style={{ paddingLeft: 36 }} placeholder="Your full name" value={form.name} onChange={(e) => set('name', e.target.value)} />
                     </div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
-                      WhatsApp / Mobile Number
-                    </label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>WhatsApp / Mobile Number</label>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <div className="input" style={{ width: 60, textAlign: 'center', flexShrink: 0, padding: '9px 8px', color: 'var(--text-muted)' }}>+91</div>
                       <div style={{ position: 'relative', flex: 1 }}>
                         <Phone size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
-                        <input
-                          className="input"
-                          style={{ paddingLeft: 36 }}
-                          placeholder="9876543210"
-                          value={form.mobile}
-                          onChange={(e) => set('mobile', e.target.value)}
-                          type="tel"
-                          maxLength={10}
-                        />
+                        <input className="input" style={{ paddingLeft: 36 }} placeholder="9876543210" value={form.mobile} onChange={(e) => set('mobile', e.target.value)} type="tel" maxLength={10} />
                       </div>
                     </div>
                     <p style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 5 }}>Shared with founders only when you accept a match</p>
@@ -166,27 +156,45 @@ export default function HustlerOnboarding() {
             {step === 2 && (
               <>
                 <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Your Skills & Location</h2>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>We'll match you with founders looking for your expertise</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Primary Skill</label>
-                    <select className="input" value={form.skill} onChange={(e) => set('skill', e.target.value)}>
-                      <option value="">Select your skill</option>
-                      {SKILLS.map((s) => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Select all your skills — you'll only see briefs that match</p>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 8 }}>
+                    Skills
+                    {form.skills.length > 0 && (
+                      <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--primary)', fontWeight: 400 }}>
+                        {form.skills.length} selected
+                      </span>
+                    )}
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                    {SKILLS.map((s) => {
+                      const selected = form.skills.includes(s)
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => toggleSkill(s)}
+                          style={{
+                            padding: '8px 6px', borderRadius: 10, fontSize: 12,
+                            fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
+                            background: selected ? 'var(--primary-soft)' : 'var(--bg-subtle)',
+                            border: `1.5px solid ${selected ? 'var(--primary)' : 'var(--border)'}`,
+                            color: selected ? 'var(--primary)' : 'var(--text-muted)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                          }}
+                        >
+                          {selected && <Check size={10} strokeWidth={3} />}
+                          {s}
+                        </button>
+                      )
+                    })}
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Location</label>
-                    <div style={{ position: 'relative' }}>
-                      <MapPin size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
-                      <input
-                        className="input"
-                        style={{ paddingLeft: 36 }}
-                        placeholder="City, e.g. Mumbai"
-                        value={form.location}
-                        onChange={(e) => set('location', e.target.value)}
-                      />
-                    </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Location</label>
+                  <div style={{ position: 'relative' }}>
+                    <MapPin size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
+                    <input className="input" style={{ paddingLeft: 36 }} placeholder="City, e.g. Mumbai" value={form.location} onChange={(e) => set('location', e.target.value)} />
                   </div>
                 </div>
               </>
@@ -200,9 +208,7 @@ export default function HustlerOnboarding() {
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 8 }}>Where did you hear about Briefit?</label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {HEARD_FROM.map((h) => (
-                      <button
-                        key={h}
-                        onClick={() => set('heard_from', h)}
+                      <button key={h} type="button" onClick={() => set('heard_from', h)}
                         style={{
                           padding: '10px 12px', borderRadius: 10, fontSize: 13,
                           fontWeight: 500, textAlign: 'left', cursor: 'pointer', transition: 'all 0.15s',
@@ -216,9 +222,7 @@ export default function HustlerOnboarding() {
                     ))}
                   </div>
                 </div>
-                {error && (
-                  <p style={{ marginTop: 16, fontSize: 13, color: 'var(--danger)', textAlign: 'center' }}>{error}</p>
-                )}
+                {error && <p style={{ marginTop: 16, fontSize: 13, color: 'var(--danger)', textAlign: 'center' }}>{error}</p>}
               </>
             )}
           </motion.div>
@@ -230,21 +234,11 @@ export default function HustlerOnboarding() {
               </button>
             )}
             {step < 3 ? (
-              <button
-                onClick={() => setStep(s => s + 1)}
-                disabled={!canNext()}
-                className="btn btn-primary btn-full"
-                style={{ gap: 6 }}
-              >
+              <button onClick={() => setStep(s => s + 1)} disabled={!canNext()} className="btn btn-primary btn-full" style={{ gap: 6 }}>
                 Continue <ChevronRight size={16} />
               </button>
             ) : (
-              <button
-                onClick={handleSubmit}
-                disabled={!canNext() || loading}
-                className="btn btn-primary btn-full"
-                style={{ gap: 6 }}
-              >
+              <button onClick={handleSubmit} disabled={!canNext() || loading} className="btn btn-primary btn-full" style={{ gap: 6 }}>
                 {loading
                   ? <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
                   : <><Zap size={15} /> Join the Hustle</>

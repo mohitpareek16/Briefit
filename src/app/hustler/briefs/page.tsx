@@ -8,6 +8,11 @@ import { NavBar } from '@/components/NavBar'
 import { BottomNav } from '@/components/BottomNav'
 import { createClient } from '@/lib/supabase/client'
 
+function parseSkills(raw: string): string[] {
+  if (!raw) return []
+  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [raw] } catch { return [raw] }
+}
+
 const SKILL_COLORS: Record<string, string> = {
   Development: '#7c3aed', Design: '#0891b2', 'Content Writing': '#16a34a',
   'Social Media': '#db2777', 'Video Editing': '#ea580c', Marketing: '#2563eb',
@@ -28,6 +33,7 @@ export default function HustlerBriefs() {
   const [applied, setApplied] = useState<Set<string>>(new Set())
   const [applying, setApplying] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
+  const [hustler, setHustler] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -38,13 +44,21 @@ export default function HustlerBriefs() {
       if (!user) { router.push('/auth'); return }
       setUserId(user.id)
 
-      const [{ data: b }, { data: m }] = await Promise.all([
+      const [{ data: b }, { data: m }, { data: h }] = await Promise.all([
         supabase.from('briefs').select('*').eq('status', 'active').order('created_at', { ascending: false }).limit(50),
         supabase.from('matches').select('brief_id').eq('hustler_id', user.id),
+        supabase.from('hustlers').select('skill').eq('id', user.id).single(),
       ])
 
-      if (b) setBriefs(b)
+      if (h) setHustler(h)
       if (m) setApplied(new Set(m.map((x: any) => x.brief_id)))
+      if (b) {
+        const hustlerSkills = parseSkills(h?.skill || '')
+        const filtered = hustlerSkills.length > 0
+          ? b.filter((brief: any) => hustlerSkills.includes(brief.skill))
+          : b
+        setBriefs(filtered)
+      }
       setLoading(false)
     }
 
@@ -53,7 +67,12 @@ export default function HustlerBriefs() {
     const channel = supabase
       .channel('briefs-feed')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'briefs' }, (payload) => {
-        setBriefs((prev) => [payload.new as any, ...prev])
+        const newBrief = payload.new as any
+        setBriefs((prev) => {
+          const hustlerSkills = parseSkills(hustler?.skill || '')
+          if (hustlerSkills.length > 0 && !hustlerSkills.includes(newBrief.skill)) return prev
+          return [newBrief, ...prev]
+        })
       })
       .subscribe()
 
@@ -94,6 +113,11 @@ export default function HustlerBriefs() {
           <div>
             <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>All Briefs</h1>
             <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>{briefs.length} active right now</p>
+            {parseSkills(hustler?.skill || '').length > 0 && (
+              <p style={{ fontSize: 11, color: 'var(--primary)', marginTop: 2 }}>
+                Showing briefs matching: {parseSkills(hustler?.skill || '').join(', ')}
+              </p>
+            )}
           </div>
           <span className="live-dot" style={{ marginLeft: 8 }} />
         </div>
