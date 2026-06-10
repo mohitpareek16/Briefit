@@ -10,41 +10,50 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get('code')
   const origin = requestUrl.origin
 
-  if (code) {
-    const cookieStore = cookies()
-    const supabase = createServerClient(SUPABASE_URL, SUPABASE_KEY, {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {}
-        },
-      },
-    })
-
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role, onboarded')
-          .eq('id', user.id)
-          .single()
-
-        if (!profile || !profile.onboarded) {
-          const role = cookieStore.get('briefit_role')?.value || 'hustler'
-          return NextResponse.redirect(`${origin}/onboarding/${role}`)
-        }
-        return NextResponse.redirect(`${origin}/${profile.role}/dashboard`)
-      }
-    }
+  if (!code) {
+    // No code in URL — may be implicit flow (tokens in hash), hand off to client
+    return NextResponse.redirect(`${origin}/auth/verify`)
   }
 
-  return NextResponse.redirect(`${origin}/auth?error=auth_failed`)
+  const cookieStore = cookies()
+  const supabase = createServerClient(SUPABASE_URL, SUPABASE_KEY, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
+        } catch {}
+      },
+    },
+  })
+
+  const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+  if (error) {
+    // Pass actual error to client so we can see what's failing
+    const msg = encodeURIComponent(`${error.code ?? 'exchange_error'}: ${error.message}`)
+    // Also try client-side exchange as fallback (passes code to client page)
+    return NextResponse.redirect(`${origin}/auth/verify?code=${encodeURIComponent(code)}&hint=${msg}`)
+  }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role, onboarded')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile || !profile.onboarded) {
+      const role = cookieStore.get('briefit_role')?.value || 'hustler'
+      return NextResponse.redirect(`${origin}/onboarding/${role}`)
+    }
+    return NextResponse.redirect(`${origin}/${profile.role}/dashboard`)
+  }
+
+  return NextResponse.redirect(`${origin}/auth?error=no_user_after_exchange`)
 }

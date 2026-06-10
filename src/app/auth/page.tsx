@@ -74,8 +74,8 @@ function AuthContent() {
           </p>
 
           {error && (
-            <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 20, textAlign: 'center', fontSize: 13, border: '1px solid rgba(220,38,38,0.25)', background: 'rgba(220,38,38,0.08)', color: 'var(--danger)' }}>
-              Authentication failed. Please try again.
+            <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 20, textAlign: 'left', fontSize: 12, border: '1px solid rgba(220,38,38,0.25)', background: 'rgba(220,38,38,0.08)', color: 'var(--danger)', wordBreak: 'break-all' }}>
+              <strong>Auth error:</strong> {decodeURIComponent(error)}
             </div>
           )}
 
