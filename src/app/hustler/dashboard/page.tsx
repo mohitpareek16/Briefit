@@ -1,76 +1,74 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, MapPin, IndianRupee, Zap, Bell, Check, X, Power, FileText, Star } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { Clock, MapPin, IndianRupee, Zap, Power, FileText } from 'lucide-react'
 import { NavBar } from '@/components/NavBar'
 import { BottomNav } from '@/components/BottomNav'
 import { createClient } from '@/lib/supabase/client'
-import type { BriefWithEntrepreneur, Profile, Hustler } from '@/lib/types'
 
 const SKILL_COLORS: Record<string, string> = {
-  Development: '#7c3aed',
-  Design: '#0891b2',
-  'Content Writing': '#16a34a',
-  'Social Media': '#db2777',
-  'Video Editing': '#ea580c',
-  Marketing: '#2563eb',
-  Finance: '#b45309',
-  Legal: '#6b21a8',
-  Other: '#475569',
+  Development: '#7c3aed', Design: '#0891b2', 'Content Writing': '#16a34a',
+  'Social Media': '#db2777', 'Video Editing': '#ea580c', Marketing: '#2563eb',
+  Finance: '#b45309', Legal: '#6b21a8', Other: '#475569',
 }
-
-const MOCK_BRIEFS = [
-  { id: '1', title: 'Build a React Landing Page', skill: 'Development', budget: 8000, urgency: 'Urgent', location_pref: 'Remote', created_at: new Date(Date.now() - 2 * 60000).toISOString() },
-  { id: '2', title: 'Design a Brand Identity Kit', skill: 'Design', budget: 12000, urgency: 'Normal', location_pref: 'Mumbai', created_at: new Date(Date.now() - 5 * 60000).toISOString() },
-  { id: '3', title: 'Write 10 SEO Blog Posts', skill: 'Content Writing', budget: 5000, urgency: 'Normal', location_pref: 'Remote', created_at: new Date(Date.now() - 8 * 60000).toISOString() },
-  { id: '4', title: 'Run Instagram Ads Campaign', skill: 'Social Media', budget: 6500, urgency: 'Urgent', location_pref: 'Remote', created_at: new Date(Date.now() - 12 * 60000).toISOString() },
-  { id: '5', title: 'Edit 3 Product Launch Videos', skill: 'Video Editing', budget: 9000, urgency: 'Urgent', location_pref: 'Delhi', created_at: new Date(Date.now() - 18 * 60000).toISOString() },
-  { id: '6', title: 'Go-to-Market Strategy', skill: 'Marketing', budget: 15000, urgency: 'Normal', location_pref: 'Remote', created_at: new Date(Date.now() - 24 * 60000).toISOString() },
-]
 
 function timeAgo(iso: string) {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
   if (diff < 1) return 'just now'
-  if (diff === 1) return '1 min ago'
-  return `${diff} mins ago`
+  if (diff < 60) return `${diff}m ago`
+  if (diff < 1440) return `${Math.floor(diff / 60)}h ago`
+  return `${Math.floor(diff / 1440)}d ago`
 }
 
 export default function HustlerDashboard() {
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [hustler, setHustler] = useState<Hustler | null>(null)
+  const router = useRouter()
+  const [profile, setProfile] = useState<any>(null)
+  const [hustler, setHustler] = useState<any>(null)
   const [isActive, setIsActive] = useState(false)
   const [toggling, setToggling] = useState(false)
-  const [briefs, setBriefs] = useState(MOCK_BRIEFS)
-  const [matchState, setMatchState] = useState<'idle' | 'incoming' | 'accepted'>('idle')
-  const [showMatch, setShowMatch] = useState(false)
+  const [briefs, setBriefs] = useState<any[]>([])
+  const [stats, setStats] = useState({ applied: 0, matched: 0 })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return
-      const { data: p } = await supabase.from('profiles').select('*').eq('id', data.user.id).single()
-      const { data: h } = await supabase.from('hustlers').select('*').eq('id', data.user.id).single()
+
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/auth'); return }
+
+      const [{ data: p }, { data: h }, { data: b }, { data: appliedMatches }, { data: acceptedMatches }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', user.id).single(),
+        supabase.from('hustlers').select('*').eq('id', user.id).single(),
+        supabase.from('briefs').select('*').eq('status', 'active').order('created_at', { ascending: false }).limit(30),
+        supabase.from('matches').select('id', { count: 'exact' }).eq('hustler_id', user.id),
+        supabase.from('matches').select('id', { count: 'exact' }).eq('hustler_id', user.id).eq('status', 'accepted'),
+      ])
+
       if (p) setProfile(p)
       if (h) { setHustler(h); setIsActive(h.is_active) }
-    })
+      if (b) setBriefs(b)
+      setStats({
+        applied: appliedMatches?.length ?? 0,
+        matched: acceptedMatches?.length ?? 0,
+      })
+      setLoading(false)
+    }
 
-    // Simulate incoming match after 5s
-    const t = setTimeout(() => { setMatchState('incoming'); setShowMatch(true) }, 5000)
-    return () => clearTimeout(t)
-  }, [])
+    init()
 
-  // Real-time briefs subscription
-  useEffect(() => {
-    const supabase = createClient()
+    // Live: new briefs appear instantly
     const channel = supabase
-      .channel('briefs')
+      .channel('briefs-live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'briefs' }, (payload) => {
         setBriefs((prev) => [payload.new as any, ...prev])
       })
       .subscribe()
+
     return () => { supabase.removeChannel(channel) }
-  }, [])
+  }, [router])
 
   const toggleActive = async () => {
     setToggling(true)
@@ -83,169 +81,131 @@ export default function HustlerDashboard() {
     setToggling(false)
   }
 
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 32, height: 32, border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+
   return (
-    <div className="min-h-screen pb-safe" style={{ background: 'var(--bg)' }}>
+    <div style={{ minHeight: '100vh', paddingBottom: 80, background: 'var(--bg)' }}>
       <NavBar showLogout />
 
-      <main className="pt-16 pb-4 px-4 max-w-5xl mx-auto">
+      <main style={{ paddingTop: 72, paddingBottom: 16, padding: '72px 16px 16px', maxWidth: 720, margin: '0 auto' }}>
+
         {/* Header */}
-        <div className="flex items-center justify-between py-5 flex-wrap gap-3">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 20, flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>
+            <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>
               Hey {profile?.name?.split(' ')[0] || 'Hustler'} 👋
             </h1>
-            <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {isActive ? 'You\'re visible to founders' : 'Go active to receive matches'}
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+              {isActive ? "You're visible to founders" : 'Go active to receive match requests'}
             </p>
           </div>
 
-          {/* Active Toggle */}
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={toggleActive}
             disabled={toggling}
-            className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all"
             style={{
-              background: isActive ? 'color-mix(in srgb, #22c55e 12%, transparent)' : 'var(--bg-muted)',
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 18px', borderRadius: 12,
+              fontWeight: 600, fontSize: 13, cursor: 'pointer',
+              transition: 'all 0.2s',
+              background: isActive ? 'rgba(34,197,94,0.12)' : 'var(--bg-muted)',
               border: `1.5px solid ${isActive ? '#22c55e' : 'var(--border)'}`,
               color: isActive ? '#22c55e' : 'var(--text-muted)',
             }}
           >
-            {toggling ? (
-              <div className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'currentColor', borderTopColor: 'transparent' }} />
-            ) : (
-              <Power size={16} />
-            )}
+            {toggling
+              ? <div style={{ width: 16, height: 16, border: '2px solid currentColor', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+              : <Power size={16} />
+            }
             {isActive ? 'Active' : 'Go Active'}
-            {isActive && <span className="pulse-dot ml-0.5" />}
+            {isActive && <span className="live-dot" style={{ marginLeft: 2 }} />}
           </motion.button>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: 24 }}>
           {[
-            { label: 'Applied', value: '12' },
-            { label: 'Matches', value: '4' },
-            { label: 'Earnings', value: '₹24k' },
+            { label: 'Applied', value: stats.applied },
+            { label: 'Matched', value: stats.matched },
+            { label: 'Skill', value: hustler?.skill?.split(' ')[0] || '—' },
           ].map((s) => (
-            <div key={s.label} className="card p-4 text-center">
-              <div className="font-bold text-lg" style={{ color: 'var(--text)' }}>{s.value}</div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{s.label}</div>
+            <div key={s.label} className="card" style={{ padding: '14px 10px', textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: 18, color: 'var(--text)' }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{s.label}</div>
             </div>
           ))}
         </div>
 
-        {/* Incoming match */}
-        <AnimatePresence>
-          {showMatch && (
-            <motion.div
-              initial={{ opacity: 0, y: -10, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.97 }}
-              transition={{ duration: 0.3 }}
-              className="rounded-2xl p-4 mb-5 border-2"
-              style={{
-                background: matchState === 'accepted'
-                  ? 'color-mix(in srgb, #22c55e 8%, var(--bg-subtle))'
-                  : 'color-mix(in srgb, var(--primary) 8%, var(--bg-subtle))',
-                borderColor: matchState === 'accepted' ? '#22c55e' : 'var(--primary)',
-              }}
-            >
-              {matchState === 'incoming' && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Bell size={15} style={{ color: 'var(--primary)' }} />
-                    <span className="font-semibold text-sm" style={{ color: 'var(--primary)' }}>Match Incoming!</span>
-                    <span className="pulse-dot ml-auto" />
-                  </div>
-                  <p className="text-sm font-medium mb-0.5" style={{ color: 'var(--text)' }}>
-                    🎉 A founder needs a <strong>{profile?.role === 'hustler' ? (hustler?.skill || 'Design') : 'Design'}</strong> expert
-                  </p>
-                  <p className="text-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-                    Accept to share your contact. The founder will reach out directly.
-                  </p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setMatchState('accepted')}
-                      className="btn btn-sm flex-1 gap-1.5" style={{ background: '#22c55e', color: 'white', border: 'none' }}>
-                      <Check size={14} /> Accept
-                    </button>
-                    <button onClick={() => setShowMatch(false)}
-                      className="btn btn-secondary btn-sm flex-1 gap-1.5">
-                      <X size={14} /> Pass
-                    </button>
-                  </div>
-                </div>
-              )}
-              {matchState === 'accepted' && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'color-mix(in srgb, #22c55e 20%, transparent)', border: '1px solid #22c55e' }}>
-                    <Check size={18} className="text-green-500" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-green-500">Matched!</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      The founder will call or WhatsApp if they choose you. Your contact has been shared.
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         {/* Briefs feed */}
-        <div className="flex items-center gap-2 mb-3">
-          <FileText size={15} style={{ color: 'var(--text-muted)' }} />
-          <span className="text-sm font-semibold" style={{ color: 'var(--text)' }}>Live Briefs</span>
-          <span className="text-xs ml-auto" style={{ color: 'var(--text-subtle)' }}>Updated live</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <FileText size={14} color="var(--text-muted)" />
+          <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>Live Briefs</span>
+          <span className="live-dot" style={{ marginLeft: 4 }} />
+          <span style={{ fontSize: 12, color: 'var(--text-subtle)', marginLeft: 'auto' }}>{briefs.length} active</span>
         </div>
 
-        <div className="space-y-3">
-          {briefs.map((brief, i) => (
-            <motion.div
-              key={brief.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
-              className="card p-4 cursor-pointer card-interactive"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <span className="font-semibold text-sm" style={{ color: 'var(--text)' }}>{brief.title}</span>
-                    {brief.urgency === 'Urgent' && (
-                      <span className="badge badge-red text-xs py-0.5">
-                        <Zap size={10} /> Urgent
+        {briefs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-subtle)' }}>
+            <FileText size={40} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
+            <p style={{ fontSize: 14, fontWeight: 500 }}>No briefs posted yet</p>
+            <p style={{ fontSize: 12, marginTop: 4 }}>Go active and check back soon</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {briefs.map((brief, i) => (
+              <motion.div
+                key={brief.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="card"
+                style={{ padding: 16, cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                      <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{brief.title}</span>
+                      {brief.urgency === 'Urgent' && (
+                        <span className="badge badge-red" style={{ fontSize: 11, padding: '2px 7px', gap: 4 }}>
+                          <Zap size={10} /> Urgent
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontSize: 11, fontWeight: 500, padding: '2px 8px', borderRadius: 6,
+                        background: `${SKILL_COLORS[brief.skill] || '#475569'}18`,
+                        color: SKILL_COLORS[brief.skill] || '#475569',
+                        border: `1px solid ${SKILL_COLORS[brief.skill] || '#475569'}30`,
+                      }}>{brief.skill}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-subtle)' }}>
+                        <MapPin size={11} />{brief.location_pref}
                       </span>
-                    )}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-subtle)' }}>
+                        <Clock size={11} />{timeAgo(brief.created_at)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="badge text-xs py-0.5 font-medium"
-                      style={{ background: `${SKILL_COLORS[brief.skill]}18`, color: SKILL_COLORS[brief.skill], border: `1px solid ${SKILL_COLORS[brief.skill]}30` }}>
-                      {brief.skill}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-subtle)' }}>
-                      <MapPin size={11} /> {brief.location_pref}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-subtle)' }}>
-                      <Clock size={11} /> {timeAgo(brief.created_at)}
-                    </span>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, fontWeight: 700, fontSize: 16, color: '#16a34a' }}>
+                      <IndianRupee size={13} />{brief.budget.toLocaleString('en-IN')}
+                    </div>
                   </div>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="flex items-center gap-0.5 font-bold text-base" style={{ color: '#16a34a' }}>
-                    <IndianRupee size={14} />{brief.budget.toLocaleString('en-IN')}
-                  </div>
-                  <button className="mt-1.5 btn btn-primary btn-sm">Apply</button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </main>
 
       <BottomNav role="hustler" />
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }
