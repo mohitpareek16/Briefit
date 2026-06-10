@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hxwwkhthrswpedyqqujm.supabase.co'
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_Ik496HnRoVKfUDtv6haBdQ_tW74-qqS'
+const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4d3draHRocnN3cGVkeXFxdWptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1ODM5OTQsImV4cCI6MjA5MjE1OTk5NH0.HNiWLEh9jyo5KvWIblwcaliAHH_nYwJ_20RpkxE9sQg'
 
 export function createClient() {
   const cookieStore = cookies()
