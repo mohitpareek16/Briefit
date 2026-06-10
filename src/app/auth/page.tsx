@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useState, Suspense } from 'react'
 import { motion } from 'framer-motion'
-import { Zap, FlaskConical } from 'lucide-react'
+import { Zap } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
@@ -28,13 +28,6 @@ function AuthContent() {
       },
     })
     setLoading(false)
-  }
-
-  const handleDemo = (demoRole: 'hustler' | 'entrepreneur') => {
-    // Set demo cookie (read by middleware to bypass auth)
-    document.cookie = 'briefit_demo=true; path=/; max-age=86400'
-    document.cookie = `briefit_demo_role=${demoRole}; path=/; max-age=86400`
-    router.push(`/${demoRole}/dashboard`)
   }
 
   return (
@@ -74,8 +67,8 @@ function AuthContent() {
           </p>
 
           {error && (
-            <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 20, textAlign: 'left', fontSize: 12, border: '1px solid rgba(220,38,38,0.25)', background: 'rgba(220,38,38,0.08)', color: 'var(--danger)', wordBreak: 'break-all' }}>
-              <strong>Auth error:</strong> {decodeURIComponent(error)}
+            <div style={{ padding: '10px 14px', borderRadius: 10, marginBottom: 20, textAlign: 'center', fontSize: 13, border: '1px solid rgba(220,38,38,0.25)', background: 'rgba(220,38,38,0.08)', color: 'var(--danger)' }}>
+              Sign-in failed. Please try again.
             </div>
           )}
 
@@ -84,7 +77,7 @@ function AuthContent() {
             onClick={handleGoogleAuth}
             disabled={loading}
             className="btn btn-full"
-            style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text)', padding: '12px 20px', fontSize: 15, borderRadius: 12, marginBottom: 12 }}
+            style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text)', padding: '12px 20px', fontSize: 15, borderRadius: 12, marginBottom: 20 }}
           >
             {loading ? (
               <div style={{ width: 20, height: 20, border: '2px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -99,42 +92,11 @@ function AuthContent() {
             {loading ? 'Redirecting...' : 'Continue with Google'}
           </button>
 
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 0 16px' }}>
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-            <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>or try demo</span>
-            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-          </div>
-
-          {/* Demo buttons */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <button
-              onClick={() => handleDemo('hustler')}
-              className="btn btn-outline"
-              style={{ borderRadius: 12, padding: '11px 12px', fontSize: 13, gap: 6 }}
-            >
-              <FlaskConical size={15} />
-              Demo Hustler
-            </button>
-            <button
-              onClick={() => handleDemo('entrepreneur')}
-              className="btn btn-outline"
-              style={{ borderRadius: 12, padding: '11px 12px', fontSize: 13, gap: 6 }}
-            >
-              <FlaskConical size={15} />
-              Demo Founder
-            </button>
-          </div>
-
-          <p style={{ fontSize: 11, color: 'var(--text-subtle)', textAlign: 'center', marginTop: 10 }}>
-            Demo mode uses mock data — no account needed
-          </p>
-
-          <p style={{ fontSize: 12, color: 'var(--text-subtle)', textAlign: 'center', marginTop: 20 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-subtle)', textAlign: 'center', marginBottom: 20 }}>
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </p>
 
-          <div style={{ marginTop: 20, textAlign: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
               Want to join as {isHustler ? 'an Entrepreneur' : 'a Hustler'} instead?{' '}
             </span>

@@ -37,16 +37,17 @@ export default function EntrepreneurOnboarding() {
   const canNext = () => {
     if (step === 1) return form.name.trim() && form.startup_name.trim()
     if (step === 2) return form.mobile.trim() && form.location.trim()
-    if (step === 3) return form.heard_from
+    if (step === 3) return !!form.heard_from
     return false
   }
 
   const handleSubmit = async () => {
-    if (!canNext()) return
+    if (!canNext() || !user) return
     setLoading(true)
     setError('')
     try {
       const supabase = createClient()
+
       const { error: pe } = await supabase.from('profiles').upsert({
         id: user.id,
         role: 'entrepreneur',
@@ -57,18 +58,18 @@ export default function EntrepreneurOnboarding() {
         heard_from: form.heard_from,
         avatar_url: user.user_metadata?.avatar_url || null,
         onboarded: true,
-      })
+      }, { onConflict: 'id' })
       if (pe) throw pe
 
       const { error: ee } = await supabase.from('entrepreneurs').upsert({
         id: user.id,
         startup_name: form.startup_name,
-      })
+      }, { onConflict: 'id' })
       if (ee) throw ee
 
       router.push('/entrepreneur/dashboard')
     } catch (e: any) {
-      setError(e.message || 'Something went wrong')
+      setError(e.message || 'Something went wrong. Please try again.')
       setLoading(false)
     }
   }
@@ -80,68 +81,73 @@ export default function EntrepreneurOnboarding() {
   ]
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'var(--bg)' }}>
-      <header className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary)' }}>
-            <Zap size={14} className="text-white" strokeWidth={2.5} />
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', height: 56, borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Zap size={14} color="#fff" strokeWidth={2.5} />
           </div>
-          <span className="font-bold text-base" style={{ color: 'var(--text)' }}>Briefit</span>
+          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)' }}>Briefit</span>
         </div>
         <ThemeToggle />
       </header>
 
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-sm">
-          {/* Progress */}
-          <div className="flex items-center justify-between mb-8">
+      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
+        <div style={{ width: '100%', maxWidth: 360 }}>
+          {/* Progress steps */}
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 32 }}>
             {steps.map((s, i) => (
-              <div key={s.n} className="flex items-center gap-2 flex-1">
-                <div className="flex flex-col items-center">
-                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
-                    style={{
-                      background: step >= s.n ? 'var(--primary)' : 'var(--bg-muted)',
-                      color: step >= s.n ? 'white' : 'var(--text-subtle)',
-                    }}>
+              <div key={s.n} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <div style={{
+                    width: 28, height: 28, borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, fontWeight: 700,
+                    background: step >= s.n ? 'var(--primary)' : 'var(--bg-muted)',
+                    color: step >= s.n ? '#fff' : 'var(--text-subtle)',
+                    transition: 'all 0.2s',
+                  }}>
                     {s.n}
                   </div>
-                  <span className="text-xs mt-1" style={{ color: step === s.n ? 'var(--primary)' : 'var(--text-subtle)' }}>
-                    {s.label}
-                  </span>
+                  <span style={{ fontSize: 11, color: step === s.n ? 'var(--primary)' : 'var(--text-subtle)' }}>{s.label}</span>
                 </div>
                 {i < steps.length - 1 && (
-                  <div className="flex-1 h-px mx-2 mb-4 transition-all"
-                    style={{ background: step > s.n ? 'var(--primary)' : 'var(--border)' }} />
+                  <div style={{ flex: 1, height: 1, margin: '0 8px', marginBottom: 16, background: step > s.n ? 'var(--primary)' : 'var(--border)', transition: 'all 0.2s' }} />
                 )}
               </div>
             ))}
           </div>
 
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.25 }}
-          >
+          <motion.div key={step} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }}>
             {step === 1 && (
               <>
-                <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>Your Profile</h2>
-                <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Tell hustlers about you and your startup</p>
-
-                <div className="space-y-4">
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Your Profile</h2>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Tell hustlers about you and your startup</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text)' }}>Your Name</label>
-                    <div className="relative">
-                      <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-subtle)' }} />
-                      <input className="input pl-9" placeholder="Your full name" value={form.name} onChange={(e) => set('name', e.target.value)} />
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Your Name</label>
+                    <div style={{ position: 'relative' }}>
+                      <User size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
+                      <input
+                        className="input"
+                        style={{ paddingLeft: 36 }}
+                        placeholder="Your full name"
+                        value={form.name}
+                        onChange={(e) => set('name', e.target.value)}
+                      />
                     </div>
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text)' }}>Startup Name</label>
-                    <div className="relative">
-                      <Briefcase size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-subtle)' }} />
-                      <input className="input pl-9" placeholder="Your startup's name" value={form.startup_name} onChange={(e) => set('startup_name', e.target.value)} />
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Startup Name</label>
+                    <div style={{ position: 'relative' }}>
+                      <Briefcase size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
+                      <input
+                        className="input"
+                        style={{ paddingLeft: 36 }}
+                        placeholder="Your startup's name"
+                        value={form.startup_name}
+                        onChange={(e) => set('startup_name', e.target.value)}
+                      />
                     </div>
                   </div>
                 </div>
@@ -150,26 +156,38 @@ export default function EntrepreneurOnboarding() {
 
             {step === 2 && (
               <>
-                <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>Contact Details</h2>
-                <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Used for match coordination</p>
-
-                <div className="space-y-4">
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Contact Details</h2>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Used for match coordination</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text)' }}>Mobile Number</label>
-                    <div className="flex gap-2">
-                      <div className="input w-20 text-center flex-shrink-0" style={{ padding: '10px 8px' }}>+91</div>
-                      <div className="relative flex-1">
-                        <Phone size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-subtle)' }} />
-                        <input className="input pl-9" placeholder="9876543210" value={form.mobile} onChange={(e) => set('mobile', e.target.value)} type="tel" maxLength={10} />
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Mobile Number</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <div className="input" style={{ width: 60, textAlign: 'center', flexShrink: 0, padding: '9px 8px' }}>+91</div>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <Phone size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
+                        <input
+                          className="input"
+                          style={{ paddingLeft: 36 }}
+                          placeholder="9876543210"
+                          value={form.mobile}
+                          onChange={(e) => set('mobile', e.target.value)}
+                          type="tel"
+                          maxLength={10}
+                        />
                       </div>
                     </div>
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text)' }}>Location</label>
-                    <div className="relative">
-                      <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-subtle)' }} />
-                      <input className="input pl-9" placeholder="City, e.g. Bangalore" value={form.location} onChange={(e) => set('location', e.target.value)} />
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>Location</label>
+                    <div style={{ position: 'relative' }}>
+                      <MapPin size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
+                      <input
+                        className="input"
+                        style={{ paddingLeft: 36 }}
+                        placeholder="City, e.g. Bangalore"
+                        value={form.location}
+                        onChange={(e) => set('location', e.target.value)}
+                      />
                     </div>
                   </div>
                 </div>
@@ -178,57 +196,72 @@ export default function EntrepreneurOnboarding() {
 
             {step === 3 && (
               <>
-                <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text)' }}>Almost There!</h2>
-                <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>Help us understand how you found us</p>
-
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Almost There!</h2>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>Help us understand how you found us</p>
                 <div>
-                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--text)' }}>Where did you hear about Briefit?</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 8 }}>Where did you hear about Briefit?</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {HEARD_FROM.map((h) => (
-                      <button key={h} onClick={() => set('heard_from', h)}
-                        className="p-3 rounded-xl text-sm font-medium text-left transition-all"
+                      <button
+                        key={h}
+                        onClick={() => set('heard_from', h)}
                         style={{
-                          background: form.heard_from === h ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'var(--bg-subtle)',
+                          padding: '10px 12px',
+                          borderRadius: 10,
+                          fontSize: 13,
+                          fontWeight: 500,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                          background: form.heard_from === h ? 'var(--primary-soft)' : 'var(--bg-subtle)',
                           border: `1px solid ${form.heard_from === h ? 'var(--primary)' : 'var(--border)'}`,
                           color: form.heard_from === h ? 'var(--primary)' : 'var(--text-muted)',
-                        }}>
+                        }}
+                      >
                         {h}
                       </button>
                     ))}
                   </div>
                 </div>
-
                 {error && (
-                  <p className="mt-4 text-sm text-center" style={{ color: '#dc2626' }}>{error}</p>
+                  <p style={{ marginTop: 16, fontSize: 13, color: 'var(--danger)', textAlign: 'center' }}>{error}</p>
                 )}
               </>
             )}
           </motion.div>
 
-          <div className="flex gap-3 mt-8">
+          <div style={{ display: 'flex', gap: 10, marginTop: 28 }}>
             {step > 1 && (
-              <button onClick={() => setStep(s => s - 1)} className="btn btn-secondary gap-2">
+              <button onClick={() => setStep(s => s - 1)} className="btn btn-secondary" style={{ gap: 6 }}>
                 <ChevronLeft size={16} /> Back
               </button>
             )}
             {step < 3 ? (
-              <button onClick={() => setStep(s => s + 1)} disabled={!canNext()}
-                className="btn btn-primary btn-full gap-2">
+              <button
+                onClick={() => setStep(s => s + 1)}
+                disabled={!canNext()}
+                className="btn btn-primary btn-full"
+                style={{ gap: 6 }}
+              >
                 Continue <ChevronRight size={16} />
               </button>
             ) : (
-              <button onClick={handleSubmit} disabled={!canNext() || loading}
-                className="btn btn-primary btn-full gap-2">
-                {loading ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <>Launch Your Search <Rocket size={15} /></>
-                )}
+              <button
+                onClick={handleSubmit}
+                disabled={!canNext() || loading}
+                className="btn btn-primary btn-full"
+                style={{ gap: 6 }}
+              >
+                {loading
+                  ? <div style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                  : <><Rocket size={15} /> Launch Your Search</>
+                }
               </button>
             )}
           </div>
         </div>
       </main>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
