@@ -9,6 +9,11 @@ import { NavBar } from '@/components/NavBar'
 import { BottomNav } from '@/components/BottomNav'
 import { createClient } from '@/lib/supabase/client'
 
+function parseSkills(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [raw] } catch { return [raw] }
+}
+
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   useEffect(() => {
     const t = setTimeout(onClose, 5000)
@@ -110,7 +115,7 @@ export default function EntrepreneurDashboard() {
 
   const filtered = filter === 'All'
     ? hustlers
-    : hustlers.filter((h) => h.skill === filter)
+    : hustlers.filter((h) => parseSkills(h.skill).includes(filter))
 
   const liveCount = hustlers.filter((h) => h.is_active).length
 
@@ -223,14 +228,16 @@ export default function EntrepreneurDashboard() {
                     )}
                   </div>
                   <p style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', marginBottom: 2 }}>{pname}</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{h.skill}</p>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+                    {(() => { const s = parseSkills(h.skill); return s.length > 0 ? s.slice(0, 2).join(', ') + (s.length > 2 ? ` +${s.length - 2}` : '') : '—' })()}
+                  </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-subtle)', marginBottom: 8 }}>
                     <MapPin size={10} />{plocation}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 2, color: '#f59e0b' }}>
                       <Star size={11} style={{ fill: '#f59e0b' }} />
-                      <span style={{ color: 'var(--text-muted)' }}>{Number(h.rating).toFixed(1)}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{h.completed_briefs > 0 ? Number(h.rating).toFixed(1) : '—'}</span>
                     </div>
                     <span style={{ color: 'var(--text-subtle)' }}>{h.completed_briefs} done</span>
                   </div>

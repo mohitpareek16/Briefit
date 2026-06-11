@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { IndianRupee, FileText, Rocket } from 'lucide-react'
+import { IndianRupee, FileText, Rocket, CalendarClock } from 'lucide-react'
 import { NavBar } from '@/components/NavBar'
 import { BottomNav } from '@/components/BottomNav'
 import { createClient } from '@/lib/supabase/client'
@@ -16,7 +16,7 @@ export default function PostBriefPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [form, setForm] = useState({
     title: '', description: '', skill: '',
-    budget: '', urgency: 'Normal', location_pref: 'Remote',
+    budget: '', urgency: 'Normal', location_pref: 'Remote', deadline: '',
   })
 
   const set = (k: string, v: string) => {
@@ -27,7 +27,9 @@ export default function PostBriefPage() {
   const validate = () => {
     const e: Record<string, string> = {}
     if (!form.title.trim()) e.title = 'Title is required'
+    else if (form.title.trim().length < 10) e.title = 'Title must be at least 10 characters'
     if (!form.description.trim()) e.description = 'Description is required'
+    else if (form.description.trim().length < 20) e.description = 'Please add more detail (at least 20 characters)'
     if (!form.skill) e.skill = 'Please select a skill'
     if (!form.budget || isNaN(Number(form.budget)) || Number(form.budget) <= 0) e.budget = 'Enter a valid budget'
     setErrors(e)
@@ -55,6 +57,7 @@ export default function PostBriefPage() {
           budget: Number(form.budget),
           urgency: form.urgency,
           location_pref: form.location_pref,
+          deadline: form.deadline.trim() || null,
           status: 'active',
         })
         .select('id')
@@ -97,6 +100,17 @@ export default function PostBriefPage() {
               placeholder="Describe deliverables, timeline, requirements..."
               value={form.description} onChange={(e) => set('description', e.target.value)} />
             {errors.description && <p style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>{errors.description}</p>}
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 6 }}>
+              Timeline / Deadline <span style={{ fontSize: 12, color: 'var(--text-subtle)', fontWeight: 400 }}>(optional)</span>
+            </label>
+            <div style={{ position: 'relative' }}>
+              <CalendarClock size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)', pointerEvents: 'none' }} />
+              <input className="input" style={{ paddingLeft: 34 }} placeholder="e.g. 3 days, 1 week, ASAP"
+                value={form.deadline} onChange={(e) => set('deadline', e.target.value)} />
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, MapPin, IndianRupee, Zap, FileText, Check } from 'lucide-react'
+import { Clock, MapPin, IndianRupee, Zap, FileText, Check, CalendarClock } from 'lucide-react'
 import { NavBar } from '@/components/NavBar'
 import { BottomNav } from '@/components/BottomNav'
 import { createClient } from '@/lib/supabase/client'
@@ -169,6 +169,11 @@ export default function HustlerBriefs() {
                           <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-subtle)' }}>
                             <Clock size={11} />{timeAgo(brief.created_at)}
                           </span>
+                          {brief.deadline && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--primary)' }}>
+                              <CalendarClock size={11} />{brief.deadline}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
