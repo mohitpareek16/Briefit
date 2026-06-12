@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, MapPin, IndianRupee, Zap, Power, FileText, X, Check, CalendarClock } from 'lucide-react'
+import { Clock, MapPin, IndianRupee, Zap, Power, FileText, X, Check, CalendarClock, Building2 } from 'lucide-react'
 import { NavBar } from '@/components/NavBar'
 import { BottomNav } from '@/components/BottomNav'
 import { createClient } from '@/lib/supabase/client'
@@ -27,8 +27,9 @@ function timeAgo(iso: string) {
   return `${Math.floor(diff / 1440)}d ago`
 }
 
-function BriefModal({ brief, applied, applying, onApply, onClose }: {
+function BriefModal({ brief, applied, applying, onApply, onClose, entrepreneurInfo, canDismiss, onDismiss }: {
   brief: any; applied: boolean; applying: boolean; onApply: () => void; onClose: () => void
+  entrepreneurInfo: any; canDismiss: boolean; onDismiss: () => void
 }) {
   return (
     <motion.div
@@ -54,6 +55,22 @@ function BriefModal({ brief, applied, applying, onApply, onClose }: {
           maxHeight: '85vh', overflowY: 'auto',
         }}
       >
+        {entrepreneurInfo && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: 'var(--bg-muted)', marginBottom: 14 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 16, flexShrink: 0 }}>
+              {((entrepreneurInfo?.profiles as any)?.name || 'E')[0]}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{(entrepreneurInfo?.profiles as any)?.name || 'Founder'}</p>
+              {entrepreneurInfo?.startup_name && (
+                <p style={{ fontSize: 11, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 3 }}>
+                  <Building2 size={10} />{entrepreneurInfo.startup_name}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -123,6 +140,15 @@ function BriefModal({ brief, applied, applying, onApply, onClose }: {
             : 'Express Interest'
           }
         </button>
+        {canDismiss && (
+          <button
+            onClick={onDismiss}
+            className="btn btn-sm"
+            style={{ width: '100%', marginTop: 10, gap: 6, padding: '11px 20px', fontSize: 13, color: 'var(--text-muted)' }}
+          >
+            Not Interested
+          </button>
+        )}
       </motion.div>
     </motion.div>
   )
@@ -139,8 +165,17 @@ export default function HustlerDashboard() {
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
   const [applied, setApplied] = useState<Set<string>>(new Set())
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [applying, setApplying] = useState(false)
   const [selectedBrief, setSelectedBrief] = useState<any>(null)
+  const [entrepreneurInfo, setEntrepreneurInfo] = useState<any>(null)
+
+  useEffect(() => {
+    if (!selectedBrief?.entrepreneur_id) { setEntrepreneurInfo(null); return }
+    const supabase = createClient()
+    supabase.from('entrepreneurs').select('startup_name, profiles(name)').eq('id', selectedBrief.entrepreneur_id).single()
+      .then(({ data }) => setEntrepreneurInfo(data))
+  }, [selectedBrief?.entrepreneur_id])
 
   useEffect(() => {
     const supabase = createClient()
@@ -154,21 +189,25 @@ export default function HustlerDashboard() {
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('hustlers').select('*').eq('id', user.id).single(),
         supabase.from('briefs').select('*').eq('status', 'active').order('created_at', { ascending: false }).limit(30),
-        supabase.from('matches').select('brief_id').eq('hustler_id', user.id),
+        supabase.from('matches').select('brief_id, status').eq('hustler_id', user.id),
         supabase.from('matches').select('id').eq('hustler_id', user.id).eq('status', 'accepted'),
       ])
 
       if (p) setProfile(p)
       if (h) { setHustler(h); setIsActive(h.is_active) }
       if (appliedMatches) {
-        setApplied(new Set(appliedMatches.map((m: any) => m.brief_id)))
-        setStats({ applied: appliedMatches.length, matched: acceptedMatches?.length ?? 0 })
+        setApplied(new Set(appliedMatches.filter((m: any) => m.status !== 'dismissed').map((m: any) => m.brief_id)))
+        setDismissed(new Set(appliedMatches.filter((m: any) => m.status === 'dismissed').map((m: any) => m.brief_id)))
+        setStats({ applied: appliedMatches.filter((m: any) => m.status !== 'dismissed').length, matched: acceptedMatches?.length ?? 0 })
       }
       if (b) {
         const hustlerSkills = parseSkills(h?.skill || '')
+        const dismissedSet = new Set(
+          (appliedMatches || []).filter((m: any) => m.status === 'dismissed').map((m: any) => m.brief_id)
+        )
         const filtered = hustlerSkills.length > 0
-          ? b.filter((brief: any) => hustlerSkills.includes(brief.skill))
-          : b
+          ? b.filter((brief: any) => hustlerSkills.includes(brief.skill) && !dismissedSet.has(brief.id))
+          : b.filter((brief: any) => !dismissedSet.has(brief.id))
         setBriefs(filtered)
       }
       setLoading(false)
@@ -209,6 +248,15 @@ export default function HustlerDashboard() {
     setApplying(false)
   }
 
+  const handleDismiss = async (briefId: string) => {
+    if (!userId || applied.has(briefId) || dismissed.has(briefId)) return
+    const supabase = createClient()
+    await supabase.from('matches').insert({ brief_id: briefId, hustler_id: userId, status: 'dismissed' })
+    setDismissed((prev) => { const s = new Set(Array.from(prev)); s.add(briefId); return s })
+    setBriefs((prev) => prev.filter((b) => b.id !== briefId))
+    setSelectedBrief(null)
+  }
+
   if (loading) return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ width: 32, height: 32, border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
@@ -233,6 +281,9 @@ export default function HustlerDashboard() {
             applying={applying}
             onApply={() => handleApply(selectedBrief.id)}
             onClose={() => setSelectedBrief(null)}
+            entrepreneurInfo={entrepreneurInfo}
+            canDismiss={!applied.has(selectedBrief.id)}
+            onDismiss={() => handleDismiss(selectedBrief.id)}
           />
         )}
       </AnimatePresence>
@@ -318,9 +369,23 @@ export default function HustlerDashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
                 className="card"
-                style={{ padding: 16, cursor: 'pointer' }}
+                style={{ padding: 16, cursor: 'pointer', position: 'relative' }}
                 onClick={() => setSelectedBrief(brief)}
               >
+                {!applied.has(brief.id) && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDismiss(brief.id) }}
+                    style={{
+                      position: 'absolute', top: 10, right: 10, zIndex: 2,
+                      background: 'var(--bg-muted)', border: '1px solid var(--border)',
+                      borderRadius: 6, padding: 4, cursor: 'pointer', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}
+                    title="Not Interested"
+                  >
+                    <X size={12} color="var(--text-muted)" />
+                  </button>
+                )}
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>

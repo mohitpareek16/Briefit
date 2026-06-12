@@ -17,6 +17,7 @@ export default function PostBriefPage() {
   const [form, setForm] = useState({
     title: '', description: '', skill: '',
     budget: '', urgency: 'Normal', location_pref: 'Remote', deadline: '',
+    max_hires: '1',
   })
 
   const set = (k: string, v: string) => {
@@ -59,6 +60,7 @@ export default function PostBriefPage() {
           location_pref: form.location_pref,
           deadline: form.deadline.trim() || null,
           status: 'active',
+          max_hires: Number(form.max_hires),
         })
         .select('id')
         .single()
@@ -162,6 +164,25 @@ export default function PostBriefPage() {
                     background: form.location_pref === opt ? 'var(--primary-soft)' : 'var(--bg-subtle)',
                     border: `1.5px solid ${form.location_pref === opt ? 'var(--primary)' : 'var(--border)'}`,
                     color: form.location_pref === opt ? 'var(--primary)' : 'var(--text-muted)',
+                  }}>
+                  {opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 4 }}>How many hustlers?</label>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Brief auto-closes once this many are hired</p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {['1', '2', '3', '5'].map((opt) => (
+                <button key={opt} type="button" onClick={() => set('max_hires', opt)}
+                  style={{
+                    flex: 1, padding: '10px 8px', borderRadius: 10, fontSize: 14,
+                    fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                    background: form.max_hires === opt ? 'var(--primary-soft)' : 'var(--bg-subtle)',
+                    border: `1.5px solid ${form.max_hires === opt ? 'var(--primary)' : 'var(--border)'}`,
+                    color: form.max_hires === opt ? 'var(--primary)' : 'var(--text-muted)',
                   }}>
                   {opt}
                 </button>

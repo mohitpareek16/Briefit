@@ -7,9 +7,10 @@ import { motion } from 'framer-motion'
 
 interface BottomNavProps {
   role: 'hustler' | 'entrepreneur'
+  badges?: Partial<Record<string, number>>
 }
 
-export function BottomNav({ role }: BottomNavProps) {
+export function BottomNav({ role, badges }: BottomNavProps) {
   const pathname = usePathname()
 
   const nav = role === 'hustler'
@@ -52,6 +53,16 @@ export function BottomNav({ role }: BottomNavProps) {
               />
             )}
             <Icon size={20} color={active ? 'var(--primary)' : 'var(--text-subtle)'} strokeWidth={active ? 2.5 : 2} style={{ position: 'relative' }} />
+            {(badges?.[item.href] ?? 0) > 0 && (
+              <span style={{
+                position: 'absolute', top: 4, right: 'calc(50% - 16px)', zIndex: 1,
+                minWidth: 16, height: 16, borderRadius: 8, padding: '0 3px',
+                background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {badges![item.href]}
+              </span>
+            )}
             <span style={{ fontSize: 10, fontWeight: active ? 600 : 400, color: active ? 'var(--primary)' : 'var(--text-subtle)', position: 'relative' }}>
               {item.label}
             </span>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clock, MapPin, IndianRupee, Zap, FileText, Check, CalendarClock } from 'lucide-react'
+import { Clock, MapPin, IndianRupee, Zap, FileText, Check, CalendarClock, X } from 'lucide-react'
 import { NavBar } from '@/components/NavBar'
 import { BottomNav } from '@/components/BottomNav'
 import { createClient } from '@/lib/supabase/client'
@@ -31,6 +31,7 @@ export default function HustlerBriefs() {
   const router = useRouter()
   const [briefs, setBriefs] = useState<any[]>([])
   const [applied, setApplied] = useState<Set<string>>(new Set())
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
   const [applying, setApplying] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [hustler, setHustler] = useState<any>(null)
@@ -46,17 +47,23 @@ export default function HustlerBriefs() {
 
       const [{ data: b }, { data: m }, { data: h }] = await Promise.all([
         supabase.from('briefs').select('*').eq('status', 'active').order('created_at', { ascending: false }).limit(50),
-        supabase.from('matches').select('brief_id').eq('hustler_id', user.id),
+        supabase.from('matches').select('brief_id, status').eq('hustler_id', user.id),
         supabase.from('hustlers').select('skill').eq('id', user.id).single(),
       ])
 
       if (h) setHustler(h)
-      if (m) setApplied(new Set(m.map((x: any) => x.brief_id)))
+      if (m) {
+        setApplied(new Set(m.filter((x: any) => x.status !== 'dismissed').map((x: any) => x.brief_id)))
+        setDismissed(new Set(m.filter((x: any) => x.status === 'dismissed').map((x: any) => x.brief_id)))
+      }
       if (b) {
         const hustlerSkills = parseSkills(h?.skill || '')
+        const dismissedSet = new Set(
+          (m || []).filter((x: any) => x.status === 'dismissed').map((x: any) => x.brief_id)
+        )
         const filtered = hustlerSkills.length > 0
-          ? b.filter((brief: any) => hustlerSkills.includes(brief.skill))
-          : b
+          ? b.filter((brief: any) => hustlerSkills.includes(brief.skill) && !dismissedSet.has(brief.id))
+          : b.filter((brief: any) => !dismissedSet.has(brief.id))
         setBriefs(filtered)
       }
       setLoading(false)
@@ -92,6 +99,14 @@ export default function HustlerBriefs() {
       setApplied((prev) => { const s = new Set(Array.from(prev)); s.add(briefId); return s })
     }
     setApplying(null)
+  }
+
+  const handleDismiss = async (briefId: string) => {
+    if (!userId || applied.has(briefId) || dismissed.has(briefId)) return
+    const supabase = createClient()
+    await supabase.from('matches').insert({ brief_id: briefId, hustler_id: userId, status: 'dismissed' })
+    setDismissed((prev) => { const s = new Set(Array.from(prev)); s.add(briefId); return s })
+    setBriefs((prev) => prev.filter((b) => b.id !== briefId))
   }
 
   if (loading) return (
@@ -141,8 +156,22 @@ export default function HustlerBriefs() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.03 }}
                     className="card"
-                    style={{ padding: 16 }}
+                    style={{ padding: 16, position: 'relative' }}
                   >
+                    {!isApplied && (
+                      <button
+                        onClick={() => handleDismiss(brief.id)}
+                        style={{
+                          position: 'absolute', top: 10, right: 10, zIndex: 2,
+                          background: 'var(--bg-muted)', border: '1px solid var(--border)',
+                          borderRadius: 6, padding: 4, cursor: 'pointer', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                        }}
+                        title="Not Interested"
+                      >
+                        <X size={12} color="var(--text-muted)" />
+                      </button>
+                    )}
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
@@ -183,25 +212,36 @@ export default function HustlerBriefs() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleApply(brief.id)}
-                      disabled={isApplied || isApplying}
-                      className={isApplied ? 'btn btn-sm' : 'btn btn-primary btn-sm'}
-                      style={{
-                        width: '100%',
-                        gap: 6,
-                        background: isApplied ? 'rgba(34,197,94,0.1)' : undefined,
-                        border: isApplied ? '1px solid #22c55e' : undefined,
-                        color: isApplied ? '#16a34a' : undefined,
-                      }}
-                    >
-                      {isApplying
-                        ? <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                        : isApplied
-                        ? <><Check size={13} /> Interest Sent</>
-                        : 'Express Interest'
-                      }
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => handleApply(brief.id)}
+                        disabled={isApplied || isApplying}
+                        className={isApplied ? 'btn btn-sm' : 'btn btn-primary btn-sm'}
+                        style={{
+                          flex: 1,
+                          gap: 6,
+                          background: isApplied ? 'rgba(34,197,94,0.1)' : undefined,
+                          border: isApplied ? '1px solid #22c55e' : undefined,
+                          color: isApplied ? '#16a34a' : undefined,
+                        }}
+                      >
+                        {isApplying
+                          ? <div style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+                          : isApplied
+                          ? <><Check size={13} /> Interest Sent</>
+                          : 'Express Interest'
+                        }
+                      </button>
+                      {!isApplied && (
+                        <button
+                          onClick={() => handleDismiss(brief.id)}
+                          className="btn btn-sm"
+                          style={{ gap: 5, fontSize: 12, color: 'var(--text-muted)', padding: '0 14px' }}
+                        >
+                          Not Interested
+                        </button>
+                      )}
+                    </div>
                   </motion.div>
                 )
               })}

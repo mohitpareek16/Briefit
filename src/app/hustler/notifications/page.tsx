@@ -4,6 +4,17 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, IndianRupee, CheckCircle, XCircle, Clock, Star, X, MessageCircle } from 'lucide-react'
+
+function Toast({ message, onClose }: { message: string; onClose: () => void }) {
+  useEffect(() => { const t = setTimeout(onClose, 6000); return () => clearTimeout(t) }, [onClose])
+  return (
+    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+      style={{ position: 'fixed', top: 72, left: '50%', transform: 'translateX(-50%)', background: '#22c55e', color: '#fff', padding: '12px 18px', borderRadius: 14, fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, zIndex: 200, boxShadow: '0 4px 24px rgba(34,197,94,0.35)', maxWidth: 340, width: 'calc(100vw - 32px)' }}>
+      🎉 <span style={{ flex: 1 }}>{message}</span>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: 0, display: 'flex' }}><X size={14} /></button>
+    </motion.div>
+  )
+}
 import { NavBar } from '@/components/NavBar'
 import { BottomNav } from '@/components/BottomNav'
 import { createClient } from '@/lib/supabase/client'
@@ -68,9 +79,11 @@ export default function HustlerNotifications() {
   // Review request sent
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set())
   const [entrepreneurData, setEntrepreneurData] = useState<Record<string, any>>({})
+  const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
+    let channelCleanup: (() => void) | undefined
 
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -127,9 +140,24 @@ export default function HustlerNotifications() {
       }
 
       setLoading(false)
+
+      const channel = supabase.channel(`matches-hired-${user.id}`)
+        .on('postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'matches', filter: `hustler_id=eq.${user.id}` },
+          (payload) => {
+            const updated = payload.new as any
+            setMatches((prev) => prev.map((m) => m.id === updated.id ? { ...m, status: updated.status } : m))
+            if (updated.status === 'accepted') {
+              setToast("You've been hired! 🎉 A founder selected you.")
+            }
+          }
+        )
+        .subscribe()
+      channelCleanup = () => { supabase.removeChannel(channel) }
     }
 
     init()
+    return () => { channelCleanup?.() }
   }, [router])
 
   const handleRequestReview = async (matchId: string, entrepreneurId: string, briefTitle: string, entrepreneurName: string) => {
@@ -190,6 +218,10 @@ export default function HustlerNotifications() {
   return (
     <div style={{ minHeight: '100vh', paddingBottom: 80, background: 'var(--bg)' }}>
       <NavBar showLogout />
+
+      <AnimatePresence>
+        {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      </AnimatePresence>
 
       {/* Review modal */}
       <AnimatePresence>

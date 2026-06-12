@@ -24,6 +24,11 @@ function timeAgo(iso: string) {
   return `${Math.floor(diff / 1440)}d ago`
 }
 
+function parseSkills(raw: string | null | undefined): string[] {
+  if (!raw) return []
+  try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [raw] } catch { return [raw] }
+}
+
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   useEffect(() => { const t = setTimeout(onClose, 5000); return () => clearTimeout(t) }, [onClose])
   return (
@@ -110,6 +115,7 @@ export default function EntrepreneurBriefs() {
           supabase.from('matches')
             .select('id, brief_id, status, created_at, hustler_id, hustlers(skill, rating, is_active, profiles(name, location, mobile))')
             .in('brief_id', ids)
+            .neq('status', 'dismissed')
             .order('created_at', { ascending: false }),
           supabase.from('reviews')
             .select('id, match_id')
@@ -136,6 +142,7 @@ export default function EntrepreneurBriefs() {
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matches' }, async (payload) => {
             const newMatch = payload.new as any
             if (!ids.includes(newMatch.brief_id)) return
+            if (newMatch.status === 'dismissed') return
             const { data: h } = await supabase
               .from('hustlers').select('skill, rating, is_active, profiles(name, location, mobile)')
               .eq('id', newMatch.hustler_id).single()
@@ -164,19 +171,36 @@ export default function EntrepreneurBriefs() {
   const handleAccept = async (matchId: string, briefId: string) => {
     setActionId(matchId)
     const supabase = createClient()
+    const brief = briefs.find((b) => b.id === briefId)
+    const maxHires = brief?.max_hires ?? 1
+    const currentAccepted = (interests[briefId] || []).filter((m) => m.status === 'accepted').length
+    const newHiredCount = currentAccepted + 1
+    const isNowFull = newHiredCount >= maxHires
 
-    // Accept this match and reject all others for this brief
-    await Promise.all([
-      supabase.from('matches').update({ status: 'accepted' }).eq('id', matchId),
-      supabase.from('matches').update({ status: 'rejected' }).eq('brief_id', briefId).neq('id', matchId),
-      supabase.from('briefs').update({ status: 'matched' }).eq('id', briefId),
-    ])
+    const briefUpdate: any = { hired_count: newHiredCount }
+    if (isNowFull) briefUpdate.status = 'matched'
 
-    setBriefs((prev) => prev.map((b) => b.id === briefId ? { ...b, status: 'matched' } : b))
+    const ops = [
+      supabase.from('matches').update({ status: 'accepted' }).eq('id', matchId).then(),
+      supabase.from('briefs').update(briefUpdate).eq('id', briefId).then(),
+    ]
+    if (isNowFull) {
+      ops.push(
+        supabase.from('matches').update({ status: 'rejected' })
+          .eq('brief_id', briefId).neq('id', matchId).eq('status', 'pending').then()
+      )
+    }
+    await Promise.all(ops)
+
+    setBriefs((prev) => prev.map((b) =>
+      b.id === briefId ? { ...b, hired_count: newHiredCount, ...(isNowFull ? { status: 'matched' } : {}) } : b
+    ))
     setInterests((prev) => {
       const updated = { ...prev }
       updated[briefId] = updated[briefId].map((m) =>
-        m.id === matchId ? { ...m, status: 'accepted' } : { ...m, status: 'rejected' }
+        m.id === matchId ? { ...m, status: 'accepted' }
+        : (isNowFull && m.status === 'pending') ? { ...m, status: 'rejected' }
+        : m
       )
       return updated
     })
@@ -329,7 +353,9 @@ export default function EntrepreneurBriefs() {
               const briefInterests = interests[brief.id] || []
               const pendingCount = briefInterests.filter((m) => m.status === 'pending').length
               const isExpanded = expanded === brief.id
-              const hasAccepted = briefInterests.some((m) => m.status === 'accepted')
+              const maxHires = brief.max_hires ?? 1
+              const acceptedCount = briefInterests.filter((m) => m.status === 'accepted').length
+              const isFullyHired = acceptedCount >= maxHires
 
               return (
                 <motion.div key={brief.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -367,6 +393,11 @@ export default function EntrepreneurBriefs() {
                       <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 6, color: s.color, background: s.bg }}>
                         {s.text}
                       </span>
+                      {(brief.max_hires > 1 || brief.hired_count > 0) && (
+                        <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600 }}>
+                          {brief.hired_count ?? 0}/{brief.max_hires ?? 1} hired
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -439,14 +470,14 @@ export default function EntrepreneurBriefs() {
                                       {isRejected && <span style={{ fontSize: 11, color: '#ef4444' }}>Skipped</span>}
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: 'var(--text-subtle)', marginTop: 2, flexWrap: 'wrap' }}>
-                                      <span style={{ color: 'var(--primary)', fontWeight: 500 }}>{h?.skill}</span>
+                                      <span style={{ color: 'var(--primary)', fontWeight: 500 }}>{parseSkills(h?.skill || '').slice(0, 2).join(', ') || '—'}</span>
                                       {p?.location && <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><MapPin size={9} />{p.location}</span>}
                                       <span style={{ display: 'flex', alignItems: 'center', gap: 2, color: '#f59e0b' }}>
                                         <Star size={9} style={{ fill: '#f59e0b' }} />{Number(h?.rating || 0).toFixed(1)}
                                       </span>
                                     </div>
                                   </div>
-                                  {!hasAccepted && match.status === 'pending' && (
+                                  {!isFullyHired && match.status === 'pending' && (
                                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                                       <button onClick={() => handleAccept(match.id, brief.id)} disabled={actionId === match.id}
                                         className="btn btn-sm"
@@ -460,7 +491,7 @@ export default function EntrepreneurBriefs() {
                                         className="btn btn-sm" style={{ padding: '5px 10px', fontSize: 11 }}>Skip</button>
                                     </div>
                                   )}
-                                  {hasAccepted && match.status === 'pending' && (
+                                  {isFullyHired && match.status === 'pending' && (
                                     <span style={{ fontSize: 11, color: 'var(--text-subtle)', padding: '4px 8px', borderRadius: 6, background: 'var(--bg-muted)', border: '1px solid var(--border)', flexShrink: 0 }}>
                                       Not Available
                                     </span>
